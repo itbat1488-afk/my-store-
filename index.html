@@ -300,6 +300,9 @@
     box-shadow: inset 0 0 0 3px var(--surface);
   }
 
+  .disabled-method { opacity: 0.4; cursor: not-allowed; }
+  .disabled-method:active { transform: none; }
+
   /* ─── CTA ─── */
   .cta-wrap { padding: 20px 20px 0; }
   .cta-btn {
@@ -476,16 +479,15 @@
   ];
 
   const PAY_METHODS = [
-    { key: "stars",  icon: "⭐", name: "Telegram Stars", sub: "Мгновенно" },
     { key: "crypto", icon: "💎", name: "USDT (TRC-20)", sub: "По реквизитам" },
-    // { key: "card",   icon: "💳", name: "Банковская карта", sub: "Скоро" },
+    { key: "card",   icon: "💳", name: "Банковская карта", sub: "Скоро", disabled: true },
   ];
 
   // ─── STATE ──────────────────────────────────────────────────────────────────
 
   let currentProduct = null;
   let selectedSize = "medium";
-  let selectedMethod = "stars";
+  let selectedMethod = "crypto";
 
   // ─── RENDER GRID ────────────────────────────────────────────────────────────
 
@@ -552,11 +554,8 @@
         <span class="size-label">${s.label}</span>
         <span class="size-sublabel">${s.sub}</span>
         <div class="size-prices">
-          <div class="size-price ${selectedMethod === 'stars' && isActive ? 'active-price' : ''}">
-            ⭐ <span class="size-price-val">${prices.stars}</span>
-          </div>
-          <div class="size-price ${selectedMethod === 'crypto' && isActive ? 'active-price' : ''}">
-            💎 <span class="size-price-val">${prices.usdt}$</span>
+          <div class="size-price ${isActive ? 'active-price' : ''}">
+            💎 <span class="size-price-val">${prices.usdt} USDT</span>
           </div>
         </div>
       `;
@@ -587,8 +586,8 @@
       if (m.key === 'card')   amountStr = 'скоро';
 
       const div = document.createElement('div');
-      div.className = `pay-method ${isActive ? 'active' : ''}`;
-      div.onclick = () => selectMethod(m.key);
+      div.className = `pay-method ${isActive ? 'active' : ''} ${m.disabled ? 'disabled-method' : ''}`;
+      div.onclick = () => { if (!m.disabled) selectMethod(m.key); };
       div.innerHTML = `
         <div class="pay-icon">${m.icon}</div>
         <div class="pay-info">
@@ -619,30 +618,143 @@
     const prices = currentProduct.prices[selectedSize];
     const sizeLabel = SIZES.find(s => s.key === selectedSize)?.sub || '';
 
-    if (selectedMethod === 'stars') {
-      btn.textContent = `Купить за ${prices.stars} ⭐ Stars`;
-    } else if (selectedMethod === 'crypto') {
+    if (selectedMethod === 'crypto') {
       btn.textContent = `Оплатить ${prices.usdt} USDT`;
+      btn.disabled = false;
     } else {
-      btn.textContent = 'Скоро';
+      btn.textContent = '💳 Скоро';
       btn.disabled = true;
-      return;
     }
-    btn.disabled = false;
   }
 
+  // ─── CRYPTO WALLET (замени на свой) ────────────────────────────────────────
+  const CRYPTO_WALLET = 'TВашАдресКошелькаUSDT';
+
   function buyNow() {
-    if (!currentProduct || !tg) return;
+    if (!currentProduct) return;
     haptic('medium');
 
-    closeSheet();
+    if (selectedMethod === 'crypto') {
+      showCryptoPayment();
+    } else {
+      showDisabled();
+    }
+  }
 
-    tg.sendData(JSON.stringify({
-      action: selectedMethod === 'stars' ? 'pay_stars' : 'pay_crypto',
+  function showCryptoPayment() {
+    const prices = currentProduct.prices[selectedSize];
+    const basePrice = prices.usdt;
+    // Генерируем уникальную сумму: базовая + случайные центы для идентификации
+    // Бот также генерирует свою сумму — они должны совпасть
+    // Здесь просто показываем базовую цену, точную уникальную сумму даст бот
+    
+    // Отправляем данные боту через Telegram.WebApp
+    const tgApp = window.Telegram?.WebApp;
+    const payload = JSON.stringify({
+      action: 'pay_crypto',
       product_id: currentProduct.id,
       size: selectedSize,
-      method: selectedMethod
-    }));
+      method: 'crypto'
+    });
+
+    // Показываем экран оплаты внутри Mini App
+    showPayScreen(basePrice);
+
+    // Пробуем отправить боту — сработает только если открыто через кнопку бота
+    try {
+      if (tgApp?.sendData) tgApp.sendData(payload);
+    } catch(e) {}
+  }
+
+  function showPayScreen(price) {
+    const sizeLabel = SIZES.find(s => s.key === selectedSize)?.sub || '';
+    
+    // Создаём экран оплаты поверх всего
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:var(--bg2);z-index:500;
+      display:flex;flex-direction:column;padding:24px 20px 40px;
+      animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1);
+    `;
+    
+    overlay.innerHTML = `
+      <style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}</style>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button onclick="this.closest('[data-pay]').remove()" 
+          style="background:var(--surface);border:none;color:var(--text);border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer">←</button>
+        <div style="font-size:18px;font-weight:700">Оплата криптой</div>
+      </div>
+
+      <div style="background:var(--surface);border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:8px">Товар</div>
+        <div style="font-size:16px;font-weight:700">${currentProduct.emoji} ${currentProduct.name}</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">Размер: ${sizeLabel}</div>
+      </div>
+
+      <div style="background:var(--surface);border-radius:16px;padding:16px;margin-bottom:16px;border:1px solid rgba(245,166,35,0.3)">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:8px">Сумма к оплате</div>
+        <div style="font-size:28px;font-weight:800;color:var(--accent)">${price} USDT</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Точную сумму пришлёт бот в чат</div>
+      </div>
+
+      <div style="background:var(--surface);border-radius:16px;padding:16px;margin-bottom:24px;border:1px solid var(--border)">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:8px">Кошелёк USDT (TRC-20)</div>
+        <div style="font-size:13px;font-weight:600;word-break:break-all;color:var(--text);font-family:monospace">${CRYPTO_WALLET}</div>
+        <button onclick="copyWallet()" 
+          style="margin-top:10px;background:var(--surface2);border:none;color:var(--accent);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;width:100%">
+          📋 Скопировать адрес
+        </button>
+      </div>
+
+      <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:12px;padding:14px;margin-bottom:24px">
+        <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:6px">⚠️ Важно</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">
+          Закройте это окно — бот пришлёт точную сумму с уникальными центами для идентификации вашего платежа. Переводите ТОЧНУЮ сумму которую укажет бот.
+        </div>
+      </div>
+
+      <button onclick="closeAndConfirm()" 
+        style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;width:100%">
+        ✅ Понятно, закрыть
+      </button>
+    `;
+    overlay.setAttribute('data-pay', '1');
+    document.body.appendChild(overlay);
+  }
+
+  function copyWallet() {
+    navigator.clipboard.writeText(CRYPTO_WALLET).then(() => {
+      haptic('light');
+      const btn = document.querySelector('[data-pay] button:nth-last-of-type(2)');
+      if (btn) { btn.textContent = '✅ Скопировано!'; setTimeout(() => btn.textContent = '📋 Скопировать адрес', 2000); }
+    });
+  }
+
+  function closeAndConfirm() {
+    haptic('medium');
+    // Отправляем данные боту и закрываем
+    const tgApp = window.Telegram?.WebApp;
+    const payload = JSON.stringify({
+      action: 'pay_crypto',
+      product_id: currentProduct.id,
+      size: selectedSize,
+      method: 'crypto'
+    });
+    try {
+      if (tgApp?.sendData) {
+        tgApp.sendData(payload);
+      } else {
+        // Если sendData не работает (Menu Button) — просто закрываем
+        if (tgApp?.close) tgApp.close();
+        else document.querySelector('[data-pay]')?.remove();
+      }
+    } catch(e) {
+      if (tgApp?.close) tgApp.close();
+    }
+  }
+
+  function showDisabled() {
+    haptic('light');
   }
 
   // ─── HAPTIC ─────────────────────────────────────────────────────────────────
