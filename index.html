@@ -318,12 +318,14 @@ function showStarsScreen() {
 
 function sendStars() {
   haptic('medium');
-  const payload = JSON.stringify({ action:'pay_stars', product_id:cur.id, size:selSize });
+  // Открываем бота с командой — работает и из Menu Button и из кнопки
+  const botUsername = 'test_shop2134_bot'; // замените на username вашего бота
+  const cmd = 'stars__' + cur.id + '__' + selSize;
   try {
-    if (tg && tg.sendData) {
-      tg.sendData(payload);
+    if (tg && tg.openTelegramLink) {
+      tg.openTelegramLink('https://t.me/' + botUsername + '?start=' + cmd);
     } else {
-      alert('Открой магазин через кнопку бота (не через Menu Button)');
+      window.open('https://t.me/' + botUsername + '?start=' + cmd, '_blank');
     }
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
@@ -365,12 +367,13 @@ function showCryptoScreen() {
 
 function sendCrypto() {
   haptic('medium');
-  const payload = JSON.stringify({ action:'pay_crypto', product_id:cur.id, size:selSize });
+  const botUsername = 'test_shop2134_bot'; // замените на username вашего бота
+  const cmd = 'crypto__' + cur.id + '__' + selSize;
   try {
-    if (tg && tg.sendData) {
-      tg.sendData(payload);
+    if (tg && tg.openTelegramLink) {
+      tg.openTelegramLink('https://t.me/' + botUsername + '?start=' + cmd);
     } else {
-      alert('Открой магазин через кнопку бота');
+      window.open('https://t.me/' + botUsername + '?start=' + cmd, '_blank');
     }
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
