@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Exclusive Store</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg2: #141414;
+  --surface: #1e1e1e;
+  --surface2: #262626;
+  --border: rgba(255,255,255,0.08);
+  --text: #ffffff;
+  --text2: #a0a0a0;
+  --text3: #555;
+  --accent: #f5a623;
+  --accent2: #e09400;
+  --green: #30d158;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,sans-serif; min-height:100vh; }
+::-webkit-scrollbar { display:none; }
+
+/* HEADER */
+.header { position:sticky; top:0; z-index:100; background:rgba(10,10,10,0.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:14px 16px 10px; }
+.header-title { font-size:20px; font-weight:700; }
+.header-sub { font-size:12px; color:var(--text3); margin-top:2px; }
+
+/* GRID */
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:12px; }
+
+/* CARD */
+.card { background:var(--surface); border-radius:var(--radius); padding:14px 8px 10px; display:flex; flex-direction:column; align-items:center; gap:8px; border:1px solid var(--border); cursor:pointer; position:relative; transition:transform .15s,border-color .15s; }
+.card:active { transform:scale(0.96); }
+.card-emoji { font-size:44px; line-height:1; }
+.card-name { font-size:11px; font-weight:600; color:var(--text2); text-align:center; }
+.new-badge { position:absolute; top:8px; left:8px; background:var(--green); color:#000; font-size:9px; font-weight:800; padding:2px 6px; border-radius:6px; text-transform:uppercase; }
+.add-btn { background:var(--accent); color:#000; border:none; border-radius:8px; width:100%; padding:7px 0; font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; }
+.add-btn:active { background:var(--accent2); }
+
+/* LOADER */
+.loader { display:flex; justify-content:center; align-items:center; height:200px; }
+.spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* OVERLAY */
+.sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; opacity:0; pointer-events:none; transition:opacity .25s; }
+.sheet-overlay.open { opacity:1; pointer-events:all; }
+
+/* SHEET */
+.sheet { position:fixed; bottom:0; left:0; right:0; z-index:301; background:var(--bg2); border-radius:24px 24px 0 0; padding:0 0 40px; transform:translateY(100%); transition:transform .35s cubic-bezier(0.32,0.72,0,1); max-height:88vh; overflow-y:auto; }
+.sheet.open { transform:translateY(0); }
+.sheet-handle { width:36px; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; margin:12px auto 0; }
+.sheet-header { display:flex; align-items:center; gap:14px; padding:20px 20px 0; }
+.sheet-emoji { font-size:52px; }
+.sheet-name { font-size:22px; font-weight:700; }
+.sheet-desc { font-size:13px; color:var(--text2); margin-top:4px; }
+
+/* SECTION LABEL */
+.section-label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:1px; padding:20px 20px 10px; }
+
+/* SIZE GRID */
+.size-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:0 20px; }
+.size-card { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius-sm); padding:12px 8px; text-align:center; cursor:pointer; transition:all .2s; }
+.size-card.active { border-color:var(--accent); background:rgba(245,166,35,0.08); }
+.size-card:active { transform:scale(0.96); }
+.size-label { font-size:14px; font-weight:800; display:block; margin-bottom:3px; }
+.size-sub { font-size:10px; color:var(--text3); display:block; margin-bottom:8px; }
+.size-price { font-size:11px; color:var(--text2); }
+.size-price.hi { color:var(--accent); font-weight:700; }
+
+/* PAY METHODS */
+.pay-methods { display:flex; flex-direction:column; gap:10px; padding:0 20px; }
+.pay-method { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all .2s; }
+.pay-method.active { border-color:var(--accent); background:rgba(245,166,35,0.06); }
+.pay-method.dim { opacity:0.4; cursor:not-allowed; }
+.pay-method:active:not(.dim) { transform:scale(0.99); }
+.pay-icon { font-size:24px; }
+.pay-info { flex:1; }
+.pay-name { font-size:15px; font-weight:600; }
+.pay-sub { font-size:12px; color:var(--text3); margin-top:1px; }
+.pay-amt { font-size:16px; font-weight:700; color:var(--accent); }
+.pay-radio { width:20px; height:20px; border:2px solid var(--border); border-radius:50%; flex-shrink:0; transition:all .2s; }
+.pay-method.active .pay-radio { border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 3px var(--surface); }
+
+/* CTA */
+.cta-wrap { padding:20px 20px 0; }
+.cta-btn { width:100%; background:var(--accent); color:#000; border:none; border-radius:var(--radius-sm); padding:16px; font-size:16px; font-weight:800; cursor:pointer; transition:transform .15s,background .15s; }
+.cta-btn:active { transform:scale(0.98); background:var(--accent2); }
+.cta-btn:disabled { background:var(--surface2); color:var(--text3); pointer-events:none; }
+
+/* PAY SCREEN */
+.payscreen { position:fixed; inset:0; background:var(--bg2); z-index:500; display:flex; flex-direction:column; padding:24px 20px 40px; overflow-y:auto; animation:slideUp .3s cubic-bezier(0.32,0.72,0,1); }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.payscreen-back { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.back-btn { background:var(--surface); border:none; color:var(--text); border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; flex-shrink:0; }
+.payscreen-title { font-size:18px; font-weight:700; }
+.info-card { background:var(--surface); border-radius:var(--radius); padding:16px; margin-bottom:14px; border:1px solid var(--border); }
+.info-label { font-size:12px; color:var(--text3); margin-bottom:6px; }
+.info-value { font-size:15px; font-weight:600; }
+.info-big { font-size:28px; font-weight:800; color:var(--accent); }
+.code-value { font-family:monospace; font-size:13px; word-break:break-all; color:var(--text); }
+.copy-btn { margin-top:10px; background:var(--surface2); border:none; color:var(--accent); border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; width:100%; }
+.copy-btn:active { opacity:.7; }
+.warn-box { background:rgba(245,166,35,0.08); border:1px solid rgba(245,166,35,0.2); border-radius:12px; padding:14px; margin-bottom:20px; font-size:12px; color:var(--text2); line-height:1.6; }
+.warn-title { font-size:13px; color:var(--accent); font-weight:700; margin-bottom:6px; }
+.timer-box { background:rgba(255,69,58,0.08); border:1px solid rgba(255,69,58,0.2); border-radius:12px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.timer-text { font-size:14px; font-weight:700; color:#ff453a; }
+.confirm-btn { width:100%; background:var(--accent); color:#000; border:none; border-radius:var(--radius-sm); padding:16px; font-size:16px; font-weight:800; cursor:pointer; margin-top:auto; }
+.confirm-btn:active { background:var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">🛍 Exclusive Store</div>
+  <div class="header-sub">Эксклюзивный контент</div>
+</div>
+
+<div id="loader" class="loader"><div class="spinner"></div></div>
+<div id="grid" class="grid" style="display:none"></div>
+
+<div class="sheet-overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-emoji" id="s-emoji"></div>
+    <div>
+      <div class="sheet-name" id="s-name"></div>
+      <div class="sheet-desc" id="s-desc"></div>
+    </div>
+  </div>
+  <div class="section-label">Выберите размер</div>
+  <div class="size-grid" id="size-grid"></div>
+  <div class="section-label">Способ оплаты</div>
+  <div class="pay-methods" id="pay-methods"></div>
+  <div class="cta-wrap">
+    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
+
+// ─── ДАННЫЕ ТОВАРОВ ──────────────────────────────────────────────────────────
+const PRODUCTS = [
+  { id:'pack_alpha', name:'Alpha Pack', desc:'Эксклюзивная Alpha коллекция', emoji:'🔥', isNew:true,
+    prices:{ small:{stars:50,usdt:5}, medium:{stars:100,usdt:10}, large:{stars:200,usdt:20} } },
+  { id:'pack_beta', name:'Beta Pack', desc:'Премиум Beta выпуск', emoji:'💎',
+    prices:{ small:{stars:75,usdt:7.5}, medium:{stars:150,usdt:15}, large:{stars:300,usdt:30} } },
+  { id:'pack_gamma', name:'Gamma Pack', desc:'Лимитированный Gamma серия', emoji:'⚡',
+    prices:{ small:{stars:100,usdt:10}, medium:{stars:200,usdt:20}, large:{stars:400,usdt:40} } },
+  { id:'pack_delta', name:'Delta Pack', desc:'Архивная Delta коллекция', emoji:'🎁',
+    prices:{ small:{stars:60,usdt:6}, medium:{stars:120,usdt:12}, large:{stars:240,usdt:24} } },
+  { id:'pack_sigma', name:'Sigma Pack', desc:'Ultra Premium Sigma эксклюзив', emoji:'👑',
+    prices:{ small:{stars:150,usdt:15}, medium:{stars:300,usdt:30}, large:{stars:600,usdt:60} } },
+  { id:'pack_omega', name:'Omega Pack', desc:'Финальная Omega коллекция', emoji:'🌟',
+    prices:{ small:{stars:200,usdt:20}, medium:{stars:400,usdt:40}, large:{stars:800,usdt:80} } },
+];
+const SIZES = [
+  { key:'small',  label:'S', sub:'Маленький' },
+  { key:'medium', label:'M', sub:'Средний' },
+  { key:'large',  label:'L', sub:'Большой' },
+];
+const PAY_METHODS = [
+  { key:'stars',  icon:'⭐', name:'Telegram Stars', sub:'Мгновенно' },
+  { key:'crypto', icon:'💎', name:'USDT (TRC-20)',  sub:'По реквизитам' },
+  { key:'card',   icon:'💳', name:'Банковская карта', sub:'Скоро', disabled:true },
+];
+
+let cur = null;
+let selSize = 'medium';
+let selMethod = 'stars';
+
+// ─── GRID ────────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML =
+      (p.isNew ? '<div class="new-badge">NEW</div>' : '') +
+      '<div class="card-emoji">' + p.emoji + '</div>' +
+      '<div class="card-name">' + p.name + '</div>' +
+      '<button class="add-btn" onclick="openProduct(\'' + p.id + '\',event)">ADD</button>';
+    g.appendChild(d);
+  });
+  document.getElementById('loader').style.display = 'none';
+  g.style.display = 'grid';
+}
+
+// ─── SHEET ───────────────────────────────────────────────────────────────────
+function openProduct(id, e) {
+  e && e.stopPropagation();
+  haptic('light');
+  cur = PRODUCTS.find(p => p.id === id);
+  if (!cur) return;
+  document.getElementById('s-emoji').textContent = cur.emoji;
+  document.getElementById('s-name').textContent = cur.name;
+  document.getElementById('s-desc').textContent = cur.desc;
+  renderSizes();
+  renderMethods();
+  updateCTA();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+  haptic('light');
+}
+
+// ─── SIZES ───────────────────────────────────────────────────────────────────
+function renderSizes() {
+  const g = document.getElementById('size-grid');
+  g.innerHTML = '';
+  SIZES.forEach(s => {
+    const p = cur.prices[s.key];
+    const active = s.key === selSize;
+    const d = document.createElement('div');
+    d.className = 'size-card' + (active ? ' active' : '');
+    d.onclick = () => { selSize = s.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
+    d.innerHTML =
+      '<span class="size-label">' + s.label + '</span>' +
+      '<span class="size-sub">' + s.sub + '</span>' +
+      '<div class="size-price' + (active && selMethod==='stars' ? ' hi' : '') + '">⭐ ' + p.stars + '</div>' +
+      '<div class="size-price' + (active && selMethod==='crypto' ? ' hi' : '') + '">💎 ' + p.usdt + '$</div>';
+    g.appendChild(d);
+  });
+}
+
+// ─── PAY METHODS ─────────────────────────────────────────────────────────────
+function renderMethods() {
+  const c = document.getElementById('pay-methods');
+  c.innerHTML = '';
+  const p = cur.prices[selSize];
+  PAY_METHODS.forEach(m => {
+    const active = m.key === selMethod;
+    const amt = m.key==='stars' ? p.stars+' ⭐' : m.key==='crypto' ? p.usdt+' USDT' : 'скоро';
+    const d = document.createElement('div');
+    d.className = 'pay-method' + (active ? ' active' : '') + (m.disabled ? ' dim' : '');
+    if (!m.disabled) d.onclick = () => { selMethod = m.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
+    d.innerHTML =
+      '<div class="pay-icon">' + m.icon + '</div>' +
+      '<div class="pay-info"><div class="pay-name">' + m.name + '</div><div class="pay-sub">' + m.sub + '</div></div>' +
+      '<div class="pay-amt">' + amt + '</div>' +
+      '<div class="pay-radio"></div>';
+    c.appendChild(d);
+  });
+}
+
+// ─── CTA ─────────────────────────────────────────────────────────────────────
+function updateCTA() {
+  const btn = document.getElementById('cta-btn');
+  if (!cur) return;
+  const p = cur.prices[selSize];
+  if (selMethod === 'stars') {
+    btn.textContent = 'Купить за ' + p.stars + ' ⭐ Stars';
+    btn.disabled = false;
+  } else if (selMethod === 'crypto') {
+    btn.textContent = 'Оплатить ' + p.usdt + ' USDT';
+    btn.disabled = false;
+  } else {
+    btn.textContent = '💳 Скоро';
+    btn.disabled = true;
+  }
+}
+
+// ─── BUY ─────────────────────────────────────────────────────────────────────
+function buyNow() {
+  if (!cur) return;
+  haptic('medium');
+  closeSheet();
+  if (selMethod === 'stars') showStarsScreen();
+  else if (selMethod === 'crypto') showCryptoScreen();
+}
+
+// ─── STARS ЭКРАН ─────────────────────────────────────────────────────────────
+function showStarsScreen() {
+  const p = cur.prices[selSize];
+  const sizeLabel = SIZES.find(s=>s.key===selSize).sub;
+  const scr = document.createElement('div');
+  scr.className = 'payscreen';
+  scr.id = 'payscreen';
+  scr.innerHTML =
+    '<div class="payscreen-back">' +
+      '<button class="back-btn" onclick="closePayscreen()">←</button>' +
+      '<div class="payscreen-title">Оплата Stars</div>' +
+    '</div>' +
+
+    '<div class="info-card">' +
+      '<div class="info-label">Товар</div>' +
+      '<div class="info-value">' + cur.emoji + ' ' + cur.name + '</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-top:4px">Размер: ' + sizeLabel + '</div>' +
+    '</div>' +
+
+    '<div class="info-card" style="border-color:rgba(245,166,35,0.3);text-align:center;padding:24px">' +
+      '<div class="info-label">Сумма к оплате</div>' +
+      '<div style="font-size:48px;margin:8px 0">⭐</div>' +
+      '<div class="info-big">' + p.stars + ' Stars</div>' +
+    '</div>' +
+
+    '<div class="warn-box">' +
+      '<div class="warn-title">ℹ️ Как оплатить</div>' +
+      'Нажмите кнопку — бот пришлёт счёт прямо в этот чат. Оплата через Telegram Stars займёт секунды.' +
+    '</div>' +
+
+    '<button class="confirm-btn" onclick="sendStars()">⭐ Получить счёт — ' + p.stars + ' Stars</button>';
+
+  document.body.appendChild(scr);
+}
+
+function sendStars() {
+  haptic('medium');
+  const payload = JSON.stringify({ action:'pay_stars', product_id:cur.id, size:selSize });
+  try {
+    if (tg && tg.sendData) {
+      tg.sendData(payload);
+    } else {
+      alert('Открой магазин через кнопку бота (не через Menu Button)');
+    }
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+// ─── КРИПТО ЭКРАН ────────────────────────────────────────────────────────────
+function showCryptoScreen() {
+  const p = cur.prices[selSize];
+  const sizeLabel = SIZES.find(s=>s.key===selSize).sub;
+  const scr = document.createElement('div');
+  scr.className = 'payscreen';
+  scr.id = 'payscreen';
+  scr.innerHTML =
+    '<div class="payscreen-back">' +
+      '<button class="back-btn" onclick="closePayscreen()">←</button>' +
+      '<div class="payscreen-title">Оплата USDT</div>' +
+    '</div>' +
+
+    '<div class="info-card">' +
+      '<div class="info-label">Товар</div>' +
+      '<div class="info-value">' + cur.emoji + ' ' + cur.name + '</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-top:4px">Размер: ' + sizeLabel + '</div>' +
+    '</div>' +
+
+    '<div class="info-card" style="border-color:rgba(245,166,35,0.3)">' +
+      '<div class="info-label">Сумма к оплате</div>' +
+      '<div class="info-big">' + p.usdt + ' USDT</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:6px">Точную сумму с уникальными центами пришлёт бот</div>' +
+    '</div>' +
+
+    '<div class="warn-box">' +
+      '<div class="warn-title">⚠️ Важно</div>' +
+      'Нажмите кнопку — бот пришлёт точную сумму (например 10.03 USDT) и кошелёк. Переводите ТОЧНО ту сумму что укажет бот — это нужно для идентификации вашего платежа. Время на перевод: 20 минут.' +
+    '</div>' +
+
+    '<button class="confirm-btn" onclick="sendCrypto()">💎 Получить реквизиты</button>';
+
+  document.body.appendChild(scr);
+}
+
+function sendCrypto() {
+  haptic('medium');
+  const payload = JSON.stringify({ action:'pay_crypto', product_id:cur.id, size:selSize });
+  try {
+    if (tg && tg.sendData) {
+      tg.sendData(payload);
+    } else {
+      alert('Открой магазин через кнопку бота');
+    }
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+function closePayscreen() {
+  const s = document.getElementById('payscreen');
+  if (s) s.remove();
+  haptic('light');
+}
+
+// ─── HAPTIC ──────────────────────────────────────────────────────────────────
+function haptic(t) { try { tg?.HapticFeedback?.impactOccurred(t); } catch{} }
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+setTimeout(renderGrid, 200);
+</script>
+</body>
+</html>
