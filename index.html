@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Exclusive Store</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg:#0a0a0a; --bg2:#141414; --surface:#1e1e1e; --surface2:#262626;
+  --border:rgba(255,255,255,0.08); --text:#fff; --text2:#a0a0a0; --text3:#555;
+  --accent:#f5a623; --accent2:#e09400; --green:#30d158; --r:16px; --rs:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+::-webkit-scrollbar{display:none}
+
+.header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 16px 10px}
+.header-title{font-size:20px;font-weight:700}
+.header-sub{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* GRID — 2 колонки для удобства чтения текста */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+
+.card{background:var(--surface);border-radius:var(--r);padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--border);cursor:pointer;position:relative;transition:transform .15s,border-color .15s}
+.card:active{transform:scale(0.97)}
+.card-header{display:flex;align-items:flex-start;gap:10px}
+.card-emoji{font-size:28px;line-height:1;flex-shrink:0}
+.card-info{flex:1;min-width:0}
+.card-name{font-size:14px;font-weight:700;line-height:1.3;word-break:break-word}
+.card-price{font-size:11px;color:var(--text3);margin-top:3px}
+.new-badge{position:absolute;top:10px;right:10px;background:var(--green);color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase}
+.add-btn{background:var(--accent);color:#000;border:none;border-radius:8px;width:100%;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.add-btn:active{background:var(--accent2)}
+
+.loader{display:flex;justify-content:center;align-items:center;height:200px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* OVERLAY + SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{position:fixed;bottom:0;left:0;right:0;z-index:301;background:var(--bg2);border-radius:24px 24px 0 0;padding:0 0 40px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:88vh;overflow-y:auto}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:12px auto 0}
+
+/* PRODUCT INFO — только текст */
+.prod-info{padding:20px 20px 0}
+.prod-name{font-size:22px;font-weight:800;line-height:1.3;margin-bottom:8px}
+.prod-desc{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:0}
+
+.sec-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:20px 20px 10px}
+
+/* SIZE */
+.size-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px}
+.size-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--rs);padding:12px 8px;text-align:center;cursor:pointer;transition:all .2s}
+.size-card.active{border-color:var(--accent);background:rgba(245,166,35,0.08)}
+.size-card:active{transform:scale(0.96)}
+.sz-label{font-size:14px;font-weight:800;display:block;margin-bottom:3px}
+.sz-sub{font-size:10px;color:var(--text3);display:block;margin-bottom:8px}
+.sz-price{font-size:11px;color:var(--text2)}
+.sz-price.hi{color:var(--accent);font-weight:700}
+
+/* PAY METHODS */
+.pay-methods{display:flex;flex-direction:column;gap:10px;padding:0 20px}
+.pay-method{background:var(--surface);border:2px solid var(--border);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.pay-method.active{border-color:var(--accent);background:rgba(245,166,35,0.06)}
+.pay-method.dim{opacity:0.4;cursor:not-allowed}
+.pay-method:active:not(.dim){transform:scale(0.99)}
+.pay-icon{font-size:24px}
+.pay-info{flex:1}
+.pay-name{font-size:15px;font-weight:600}
+.pay-sub{font-size:12px;color:var(--text3);margin-top:1px}
+.pay-amt{font-size:16px;font-weight:700;color:var(--accent)}
+.pay-radio{width:20px;height:20px;border:2px solid var(--border);border-radius:50%;flex-shrink:0;transition:all .2s}
+.pay-method.active .pay-radio{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+
+.cta-wrap{padding:20px 20px 0}
+.cta-btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--rs);padding:16px;font-size:16px;font-weight:800;cursor:pointer;transition:transform .15s,background .15s}
+.cta-btn:active{transform:scale(0.98);background:var(--accent2)}
+.cta-btn:disabled{background:var(--surface2);color:var(--text3);pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">🛍 Exclusive Store</div>
+  <div class="header-sub">Эксклюзивный контент</div>
+</div>
+
+<div id="loader" class="loader"><div class="spinner"></div></div>
+<div id="grid" class="grid" style="display:none"></div>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="prod-info">
+    <div class="prod-name" id="s-name"></div>
+    <div class="prod-desc" id="s-desc"></div>
+  </div>
+  <div class="sec-label">Выберите размер</div>
+  <div class="size-grid" id="size-grid"></div>
+  <div class="sec-label">Способ оплаты</div>
+  <div class="pay-methods" id="pay-methods"></div>
+  <div class="cta-wrap">
+    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
+
+const BOT_USERNAME = 'test_shop2134_bot'; // ← username вашего бота без @
+
+// Товары загружаются с сервера бота
+// Для статичного GitHub Pages — вставляем прямо здесь
+// Бот автоматически обновляет этот список при перезапуске через /admin → обновить miniapp
+// Пока используем статичный список — редактируй прямо здесь или через .env и регенерацию
+
+let PRODUCTS = [];
+
+// Загружаем товары — сначала пробуем API, fallback на встроенные
+async function loadProducts() {
+  // Встроенные товары (синхронизируй с .env вручную или через скрипт)
+  PRODUCTS = [
+    { id:'product_1',  name:'Alpha Pack',   desc:'Эксклюзивная Alpha коллекция — 500+ файлов', emoji:'🔥', isNew:true,  prices:{small:{stars:50,usdt:5},medium:{stars:100,usdt:10},large:{stars:200,usdt:20}} },
+    { id:'product_2',  name:'Beta Pack',    desc:'Премиум Beta выпуск — 800+ файлов', emoji:'💎', isNew:false, prices:{small:{stars:75,usdt:7.5},medium:{stars:150,usdt:15},large:{stars:300,usdt:30}} },
+    { id:'product_3',  name:'Gamma Pack',   desc:'Лимитированный Gamma серия', emoji:'⚡', isNew:false, prices:{small:{stars:100,usdt:10},medium:{stars:200,usdt:20},large:{stars:400,usdt:40}} },
+    { id:'product_4',  name:'Delta Pack',   desc:'Архивная Delta коллекция', emoji:'🎁', isNew:false, prices:{small:{stars:60,usdt:6},medium:{stars:120,usdt:12},large:{stars:240,usdt:24}} },
+    { id:'product_5',  name:'Sigma Pack',   desc:'Ultra Premium Sigma эксклюзив', emoji:'👑', isNew:false, prices:{small:{stars:150,usdt:15},medium:{stars:300,usdt:30},large:{stars:600,usdt:60}} },
+    { id:'product_6',  name:'Omega Pack',   desc:'Финальная Omega коллекция', emoji:'🌟', isNew:false, prices:{small:{stars:200,usdt:20},medium:{stars:400,usdt:40},large:{stars:800,usdt:80}} },
+    { id:'product_7',  name:'Zeta Pack',    desc:'Новая Zeta коллекция', emoji:'🎯', isNew:false, prices:{small:{stars:80,usdt:8},medium:{stars:160,usdt:16},large:{stars:320,usdt:32}} },
+    { id:'product_8',  name:'Eta Pack',     desc:'Эксклюзивная Eta серия', emoji:'💫', isNew:false, prices:{small:{stars:90,usdt:9},medium:{stars:180,usdt:18},large:{stars:360,usdt:36}} },
+    { id:'product_9',  name:'Theta Pack',   desc:'Премиум Theta выпуск', emoji:'🔮', isNew:false, prices:{small:{stars:110,usdt:11},medium:{stars:220,usdt:22},large:{stars:440,usdt:44}} },
+    { id:'product_10', name:'Iota Pack',    desc:'Лимитированный Iota архив', emoji:'🏆', isNew:false, prices:{small:{stars:120,usdt:12},medium:{stars:240,usdt:24},large:{stars:480,usdt:48}} },
+    { id:'product_11', name:'Kappa Pack',   desc:'Kappa эксклюзив — топ контент', emoji:'💥', isNew:false, prices:{small:{stars:130,usdt:13},medium:{stars:260,usdt:26},large:{stars:520,usdt:52}} },
+    { id:'product_12', name:'Lambda Pack',  desc:'Lambda коллекция — редкие файлы', emoji:'🎪', isNew:false, prices:{small:{stars:140,usdt:14},medium:{stars:280,usdt:28},large:{stars:560,usdt:56}} },
+    { id:'product_13', name:'Mu Pack',      desc:'Mu серия — эксклюзив', emoji:'🎭', isNew:false, prices:{small:{stars:50,usdt:5},medium:{stars:100,usdt:10},large:{stars:200,usdt:20}} },
+    { id:'product_14', name:'Nu Pack',      desc:'Nu архив — полная коллекция', emoji:'🌈', isNew:false, prices:{small:{stars:70,usdt:7},medium:{stars:140,usdt:14},large:{stars:280,usdt:28}} },
+    { id:'product_15', name:'Xi Pack',      desc:'Xi выпуск — лимитированный', emoji:'🎸', isNew:false, prices:{small:{stars:85,usdt:8.5},medium:{stars:170,usdt:17},large:{stars:340,usdt:34}} },
+    { id:'product_16', name:'Omicron Pack', desc:'Omicron коллекция', emoji:'🎬', isNew:false, prices:{small:{stars:95,usdt:9.5},medium:{stars:190,usdt:19},large:{stars:380,usdt:38}} },
+    { id:'product_17', name:'Pi Pack',      desc:'Pi серия — эксклюзивный контент', emoji:'🎵', isNew:false, prices:{small:{stars:105,usdt:10.5},medium:{stars:210,usdt:21},large:{stars:420,usdt:42}} },
+    { id:'product_18', name:'Rho Pack',     desc:'Rho архив — редкая коллекция', emoji:'🎨', isNew:false, prices:{small:{stars:115,usdt:11.5},medium:{stars:230,usdt:23},large:{stars:460,usdt:46}} },
+    { id:'product_19', name:'Tau Pack',     desc:'Tau выпуск — топ качество', emoji:'🏅', isNew:false, prices:{small:{stars:125,usdt:12.5},medium:{stars:250,usdt:25},large:{stars:500,usdt:50}} },
+    { id:'product_20', name:'Upsilon Pack', desc:'Upsilon коллекция — финальный выпуск', emoji:'💯', isNew:false, prices:{small:{stars:175,usdt:17.5},medium:{stars:350,usdt:35},large:{stars:700,usdt:70}} },
+  ];
+  renderGrid();
+}
+
+const SIZES = [
+  {key:'small', label:'S', sub:'Маленький'},
+  {key:'medium',label:'M', sub:'Средний'},
+  {key:'large', label:'L', sub:'Большой'},
+];
+const PAY_METHODS = [
+  {key:'stars',  icon:'⭐', name:'Telegram Stars', sub:'Мгновенно'},
+  {key:'crypto', icon:'💎', name:'USDT (TRC-20)',  sub:'По реквизитам'},
+  {key:'card',   icon:'💳', name:'Банковская карта', sub:'Скоро', disabled:true},
+];
+
+let cur=null, selSize='medium', selMethod='stars';
+
+function renderGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const minPrice = p.prices.small.usdt;
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML =
+      (p.isNew ? '<div class="new-badge">NEW</div>' : '') +
+      '<div class="card-header">' +
+        '<div class="card-emoji">' + p.emoji + '</div>' +
+        '<div class="card-info">' +
+          '<div class="card-name">' + p.name + '</div>' +
+          '<div class="card-price">от ' + minPrice + ' USDT</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="add-btn" onclick="openProduct(\'' + p.id + '\',event)">ADD</button>';
+    g.appendChild(d);
+  });
+  document.getElementById('loader').style.display = 'none';
+  g.style.display = 'grid';
+}
+
+function openProduct(id, e) {
+  e && e.stopPropagation();
+  haptic('light');
+  cur = PRODUCTS.find(p => p.id === id);
+  if (!cur) return;
+  document.getElementById('s-name').textContent = cur.emoji + ' ' + cur.name;
+  document.getElementById('s-desc').textContent = cur.desc;
+  renderSizes();
+  renderMethods();
+  updateCTA();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+  haptic('light');
+}
+
+function renderSizes() {
+  const g = document.getElementById('size-grid');
+  g.innerHTML = '';
+  SIZES.forEach(s => {
+    const p = cur.prices[s.key];
+    const active = s.key === selSize;
+    const d = document.createElement('div');
+    d.className = 'size-card' + (active ? ' active' : '');
+    d.onclick = () => { selSize = s.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
+    d.innerHTML =
+      '<span class="sz-label">' + s.label + '</span>' +
+      '<span class="sz-sub">' + s.sub + '</span>' +
+      '<div class="sz-price' + (active && selMethod==='stars' ? ' hi':'') + '">⭐ ' + p.stars + '</div>' +
+      '<div class="sz-price' + (active && selMethod==='crypto'? ' hi':'') + '">💎 ' + p.usdt + '$</div>';
+    g.appendChild(d);
+  });
+}
+
+function renderMethods() {
+  const c = document.getElementById('pay-methods');
+  c.innerHTML = '';
+  const p = cur.prices[selSize];
+  PAY_METHODS.forEach(m => {
+    const active = m.key === selMethod;
+    const amt = m.key==='stars' ? p.stars+' ⭐' : m.key==='crypto' ? p.usdt+' USDT' : 'скоро';
+    const d = document.createElement('div');
+    d.className = 'pay-method'+(active?' active':'')+(m.disabled?' dim':'');
+    if (!m.disabled) d.onclick = () => { selMethod=m.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
+    d.innerHTML =
+      '<div class="pay-icon">'+m.icon+'</div>' +
+      '<div class="pay-info"><div class="pay-name">'+m.name+'</div><div class="pay-sub">'+m.sub+'</div></div>' +
+      '<div class="pay-amt">'+amt+'</div>' +
+      '<div class="pay-radio"></div>';
+    c.appendChild(d);
+  });
+}
+
+function updateCTA() {
+  const btn = document.getElementById('cta-btn');
+  if (!cur) return;
+  const p = cur.prices[selSize];
+  if (selMethod==='stars')  { btn.textContent='Купить за '+p.stars+' ⭐ Stars'; btn.disabled=false; }
+  else if (selMethod==='crypto') { btn.textContent='Оплатить '+p.usdt+' USDT'; btn.disabled=false; }
+  else { btn.textContent='💳 Скоро'; btn.disabled=true; }
+}
+
+function buyNow() {
+  if (!cur) return;
+  haptic('medium');
+  const method = selMethod === 'stars' ? 'stars' : 'crypto';
+  const cmd = method + '__' + cur.id + '__' + selSize;
+  const url = 'https://t.me/' + BOT_USERNAME + '?start=' + cmd;
+  if (tg && tg.openTelegramLink) {
+    tg.openTelegramLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+
+function haptic(t) { try { tg?.HapticFeedback?.impactOccurred(t); } catch{} }
+
+loadProducts();
+</script>
+</body>
+</html>
