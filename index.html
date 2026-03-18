@@ -253,13 +253,13 @@ function updateCTA() {
 function buyNow() {
   if (!cur) return;
   haptic('medium');
-  const method = selMethod === 'stars' ? 'stars' : 'crypto';
-  const cmd = method + '__' + cur.id + '__' + selSize;
-  const url = 'https://t.me/' + BOT_USERNAME + '?start=' + cmd;
-  if (tg && tg.openTelegramLink) {
-    tg.openTelegramLink(url);
-  } else {
-    window.open(url, '_blank');
+  const payload = JSON.stringify({
+    action: selMethod === 'stars' ? 'pay_stars' : 'pay_crypto',
+    product_id: cur.id,
+    size: selSize
+  });
+  if (tg && tg.sendData) {
+    tg.sendData(payload);
   }
 }
 
