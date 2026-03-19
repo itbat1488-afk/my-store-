@@ -1,272 +1,778 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Exclusive Store</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root {
-  --bg:#0a0a0a; --bg2:#141414; --surface:#1e1e1e; --surface2:#262626;
-  --border:rgba(255,255,255,0.08); --text:#fff; --text2:#a0a0a0; --text3:#555;
-  --accent:#f5a623; --accent2:#e09400; --green:#30d158; --r:16px; --rs:10px;
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
-::-webkit-scrollbar{display:none}
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-.header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 16px 10px}
-.header-title{font-size:20px;font-weight:700}
-.header-sub{font-size:12px;color:var(--text3);margin-top:2px}
+  :root {
+    --bg: #0e0e12;
+    --surface: #17171e;
+    --surface2: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --accent: #f5a623;
+    --accent2: #ff6b35;
+    --text: #f0f0f5;
+    --muted: #8888a0;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
 
-/* GRID — 2 колонки для удобства чтения текста */
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-.card{background:var(--surface);border-radius:var(--r);padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--border);cursor:pointer;position:relative;transition:transform .15s,border-color .15s}
-.card:active{transform:scale(0.97)}
-.card-header{display:flex;align-items:flex-start;gap:10px}
-.card-emoji{font-size:28px;line-height:1;flex-shrink:0}
-.card-info{flex:1;min-width:0}
-.card-name{font-size:14px;font-weight:700;line-height:1.3;word-break:break-word}
-.card-price{font-size:11px;color:var(--text3);margin-top:3px}
-.new-badge{position:absolute;top:10px;right:10px;background:var(--green);color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase}
-.add-btn{background:var(--accent);color:#000;border:none;border-radius:8px;width:100%;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
-.add-btn:active{background:var(--accent2)}
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-.loader{display:flex;justify-content:center;align-items:center;height:200px}
-.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+  /* ── Header ── */
+  .header {
+    padding: 20px 18px 12px;
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .cart-badge {
+    background: var(--accent);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: none;
+  }
 
-/* OVERLAY + SHEET */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s}
-.overlay.open{opacity:1;pointer-events:all}
-.sheet{position:fixed;bottom:0;left:0;right:0;z-index:301;background:var(--bg2);border-radius:24px 24px 0 0;padding:0 0 40px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:88vh;overflow-y:auto}
-.sheet.open{transform:translateY(0)}
-.sheet-handle{width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:12px auto 0}
+  /* ── Search / Filter bar ── */
+  .filter-bar { display: flex; gap: 8px; margin-top: 14px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 500; }
 
-/* PRODUCT INFO — только текст */
-.prod-info{padding:20px 20px 0}
-.prod-name{font-size:22px;font-weight:800;line-height:1.3;margin-bottom:8px}
-.prod-desc{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:0}
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 16px 14px;
+  }
 
-.sec-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:20px 20px 10px}
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 12px 12px;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:active { transform: scale(0.97); }
+  .card:hover { border-color: rgba(245,166,35,0.35); box-shadow: 0 4px 24px rgba(245,166,35,0.08); }
 
-/* SIZE */
-.size-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px}
-.size-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--rs);padding:12px 8px;text-align:center;cursor:pointer;transition:all .2s}
-.size-card.active{border-color:var(--accent);background:rgba(245,166,35,0.08)}
-.size-card:active{transform:scale(0.96)}
-.sz-label{font-size:14px;font-weight:800;display:block;margin-bottom:3px}
-.sz-sub{font-size:10px;color:var(--text3);display:block;margin-bottom:8px}
-.sz-price{font-size:11px;color:var(--text2)}
-.sz-price.hi{color:var(--accent);font-weight:700}
+  .card-glow {
+    position: absolute; top: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .card-emoji { font-size: 28px; margin-bottom: 8px; display: block; }
+  .card-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .card-price { color: var(--accent); font-size: 12px; font-weight: 500; }
+  .card-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000; font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+  }
+  .add-btn {
+    margin-top: 10px;
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .add-btn:active { opacity: 0.8; }
 
-/* PAY METHODS */
-.pay-methods{display:flex;flex-direction:column;gap:10px;padding:0 20px}
-.pay-method{background:var(--surface);border:2px solid var(--border);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
-.pay-method.active{border-color:var(--accent);background:rgba(245,166,35,0.06)}
-.pay-method.dim{opacity:0.4;cursor:not-allowed}
-.pay-method:active:not(.dim){transform:scale(0.99)}
-.pay-icon{font-size:24px}
-.pay-info{flex:1}
-.pay-name{font-size:15px;font-weight:600}
-.pay-sub{font-size:12px;color:var(--text3);margin-top:1px}
-.pay-amt{font-size:16px;font-weight:700;color:var(--accent)}
-.pay-radio{width:20px;height:20px;border:2px solid var(--border);border-radius:50%;flex-shrink:0;transition:all .2s}
-.pay-method.active .pay-radio{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+  /* ── Bottom Sheet ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.show { opacity: 1; pointer-events: all; }
 
-.cta-wrap{padding:20px 20px 0}
-.cta-btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--rs);padding:16px;font-size:16px;font-weight:800;cursor:pointer;transition:transform .15s,background .15s}
-.cta-btn:active{transform:scale(0.98);background:var(--accent2)}
-.cta-btn:disabled{background:var(--surface2);color:var(--text3);pointer-events:none}
+  .sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    z-index: 300;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.32,.72,0,1);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .sheet.show { transform: translateY(0); }
+  .sheet-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 14px auto 20px;
+  }
+  .sheet-inner { padding: 0 20px 24px; }
+
+  .sheet-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .sheet-emoji { font-size: 36px; }
+  .sheet-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; }
+  .sheet-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .section-label {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 10px;
+  }
+
+  /* Size selector */
+  .sizes { display: flex; gap: 8px; margin-bottom: 20px; }
+  .size-card {
+    flex: 1;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .size-card.active { border-color: var(--accent); background: rgba(245,166,35,0.08); }
+  .size-letter { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 4px; }
+  .size-info { font-size: 10px; color: var(--muted); line-height: 1.4; white-space: pre-line; }
+  .size-price { margin-top: 6px; font-size: 11px; color: var(--accent); font-weight: 600; }
+
+  /* Payment methods */
+  .methods { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .method-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .method-card.active { border-color: var(--accent); }
+  .method-card.disabled { opacity: 0.45; cursor: not-allowed; }
+  .method-icon { font-size: 22px; flex-shrink: 0; }
+  .method-name { font-weight: 600; font-size: 14px; flex: 1; }
+  .method-sub { font-size: 11px; color: var(--muted); }
+  .method-amount { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--accent); font-size: 14px; }
+  .method-radio {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .method-card.active .method-radio { border-color: var(--accent); }
+  .method-radio-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: none;
+  }
+  .method-card.active .method-radio-dot { display: block; }
+
+  .buy-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  .buy-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+  /* ── Crypto payment screen ── */
+  .crypto-screen { display: none; }
+  .crypto-screen.show { display: block; }
+  .product-screen { display: block; }
+  .product-screen.hide { display: none; }
+
+  .crypto-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .crypto-box-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .crypto-wallet {
+    font-family: monospace; font-size: 13px;
+    word-break: break-all; line-height: 1.5;
+  }
+  .crypto-amount { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--accent); }
+  .crypto-amount-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .copy-btn {
+    margin-top: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .timer {
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .timer span { color: var(--accent); font-weight: 700; font-family: 'Syne', sans-serif; }
+
+  .paid-btn {
+    width: 100%;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: opacity .15s;
+  }
+  .paid-btn:active { opacity: 0.85; }
+  .paid-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status-msg {
+    text-align: center;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    display: none;
+  }
+  .status-msg.error { background: rgba(239,68,68,0.1); color: var(--red); display: block; }
+  .status-msg.success { background: rgba(34,197,94,0.1); color: var(--green); display: block; }
+  .status-msg.loading { background: rgba(59,130,246,0.1); color: var(--blue); display: block; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 </style>
 </head>
 <body>
 
+<!-- Header -->
 <div class="header">
-  <div class="header-title">🛍 Exclusive Store</div>
-  <div class="header-sub">Эксклюзивный контент</div>
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">🏪</div>
+      <div>
+        <div class="logo-text">Exclusive Store</div>
+        <div class="logo-sub">Premium digital content</div>
+      </div>
+    </div>
+  </div>
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-btn active" data-filter="all">All</button>
+  </div>
 </div>
 
-<div id="loader" class="loader"><div class="spinner"></div></div>
-<div id="grid" class="grid" style="display:none"></div>
+<!-- Product Grid -->
+<div class="grid" id="grid">
+  <div class="empty"><div class="empty-icon">⏳</div><div>Loading...</div></div>
+</div>
 
-<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<!-- Overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Bottom Sheet -->
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
-  <div class="prod-info">
-    <div class="prod-name" id="s-name"></div>
-    <div class="prod-desc" id="s-desc"></div>
-  </div>
-  <div class="sec-label">Выберите размер</div>
-  <div class="size-grid" id="size-grid"></div>
-  <div class="sec-label">Способ оплаты</div>
-  <div class="pay-methods" id="pay-methods"></div>
-  <div class="cta-wrap">
-    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+  <div class="sheet-inner">
+
+    <!-- Product view -->
+    <div class="product-screen" id="productScreen">
+      <div class="sheet-header">
+        <div class="sheet-emoji" id="sheetEmoji">📦</div>
+        <div>
+          <div class="sheet-title" id="sheetTitle">Pack Name</div>
+        </div>
+      </div>
+      <div class="sheet-desc" id="sheetDesc">Exclusive series</div>
+
+      <div class="section-label">Choose size</div>
+      <div class="sizes" id="sizes"></div>
+
+      <div class="section-label">Payment method</div>
+      <div class="methods">
+        <div class="method-card active" data-method="stars" onclick="selectMethod('stars')">
+          <span class="method-icon">⭐</span>
+          <div style="flex:1">
+            <div class="method-name">Telegram Stars</div>
+            <div class="method-sub">Instant delivery</div>
+          </div>
+          <div class="method-amount" id="starsAmt">—</div>
+          <div class="method-radio"><div class="method-radio-dot"></div></div>
+        </div>
+        <div class="method-card" data-method="usdt" onclick="selectMethod('usdt')">
+          <span class="method-icon">💎</span>
+          <div style="flex:1">
+            <div class="method-name">USDT (TRC-20)</div>
+            <div class="method-sub">Via wallet transfer</div>
+          </div>
+          <div class="method-amount" id="usdtAmt">—</div>
+          <div class="method-radio"><div class="method-radio-dot"></div></div>
+        </div>
+        <div class="method-card disabled" data-method="card">
+          <span class="method-icon">💳</span>
+          <div style="flex:1">
+            <div class="method-name">Bank Card</div>
+            <div class="method-sub">Coming soon</div>
+          </div>
+          <div style="color:var(--muted);font-size:12px">Soon</div>
+          <div class="method-radio"></div>
+        </div>
+      </div>
+
+      <button class="buy-btn" id="buyBtn" onclick="handleBuy()">Buy with ⭐ Stars</button>
+    </div>
+
+    <!-- Crypto payment view -->
+    <div class="crypto-screen" id="cryptoScreen">
+      <div class="sheet-header" style="margin-bottom:16px">
+        <div class="sheet-emoji">💎</div>
+        <div>
+          <div class="sheet-title">USDT Payment</div>
+          <div style="color:var(--muted);font-size:13px">TRC-20 Network</div>
+        </div>
+      </div>
+
+      <div class="crypto-box">
+        <div class="crypto-box-label">Send exactly this amount</div>
+        <div class="crypto-amount" id="cryptoAmount">— USDT</div>
+        <div class="crypto-amount-sub">⚠️ Send the exact amount shown — it identifies your payment</div>
+        <button class="copy-btn" onclick="copyAmount()">📋 Copy amount</button>
+      </div>
+
+      <div class="crypto-box">
+        <div class="crypto-box-label">To this wallet (TRC-20)</div>
+        <div class="crypto-wallet" id="cryptoWallet">—</div>
+        <button class="copy-btn" onclick="copyWallet()">📋 Copy address</button>
+      </div>
+
+      <div class="timer">⏱ Time remaining: <span id="timerDisplay">20:00</span></div>
+      <div class="status-msg" id="statusMsg"></div>
+
+      <button class="paid-btn" id="paidBtn" onclick="checkPayment()">✅ I've Paid — Check Now</button>
+      <button style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);padding:12px;font-size:14px;cursor:pointer;" onclick="cancelCrypto()">Cancel</button>
+    </div>
+
   </div>
 </div>
 
 <script>
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
+// ── Config ──────────────────────────────────────────────────────────────
+const API_URL = "https://your-vps-ip-or-domain.com"; // ← update this
+const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
+  ready: () => {},
+  expand: () => {},
+  close: () => { alert('Would close mini app'); },
+  sendData: (d) => { console.log('sendData:', d); },
+  showAlert: (msg) => { alert(msg); },
+  initData: 'test_mode',
+};
+tg.ready();
+tg.expand();
 
-const BOT_USERNAME = 'test_shop2134_bot'; // ← username вашего бота без @
+// State
+let products = [];
+let prices = {};
+let selectedProduct = null;
+let selectedSize = "M";
+let selectedMethod = "stars";
+let pendingId = null;
+let cryptoWallet = null;
+let cryptoAmount = null;
+let timerInterval = null;
+let expiresAt = null;
 
-// Товары загружаются с сервера бота
-// Для статичного GitHub Pages — вставляем прямо здесь
-// Бот автоматически обновляет этот список при перезапуске через /admin → обновить miniapp
-// Пока используем статичный список — редактируй прямо здесь или через .env и регенерацию
-
-let PRODUCTS = [];
-
-// Загружаем товары — сначала пробуем API, fallback на встроенные
-async function loadProducts() {
-  // Встроенные товары (синхронизируй с .env вручную или через скрипт)
-  PRODUCTS = [
-    { id:'product_1',  name:'Alpha Pack',   desc:'Эксклюзивная Alpha коллекция — 500+ файлов', emoji:'🔥', isNew:true,  prices:{small:{stars:50,usdt:5},medium:{stars:100,usdt:10},large:{stars:200,usdt:20}} },
-    { id:'product_2',  name:'Beta Pack',    desc:'Премиум Beta выпуск — 800+ файлов', emoji:'💎', isNew:false, prices:{small:{stars:75,usdt:7.5},medium:{stars:150,usdt:15},large:{stars:300,usdt:30}} },
-    { id:'product_3',  name:'Gamma Pack',   desc:'Лимитированный Gamma серия', emoji:'⚡', isNew:false, prices:{small:{stars:100,usdt:10},medium:{stars:200,usdt:20},large:{stars:400,usdt:40}} },
-    { id:'product_4',  name:'Delta Pack',   desc:'Архивная Delta коллекция', emoji:'🎁', isNew:false, prices:{small:{stars:60,usdt:6},medium:{stars:120,usdt:12},large:{stars:240,usdt:24}} },
-    { id:'product_5',  name:'Sigma Pack',   desc:'Ultra Premium Sigma эксклюзив', emoji:'👑', isNew:false, prices:{small:{stars:150,usdt:15},medium:{stars:300,usdt:30},large:{stars:600,usdt:60}} },
-    { id:'product_6',  name:'Omega Pack',   desc:'Финальная Omega коллекция', emoji:'🌟', isNew:false, prices:{small:{stars:200,usdt:20},medium:{stars:400,usdt:40},large:{stars:800,usdt:80}} },
-    { id:'product_7',  name:'Zeta Pack',    desc:'Новая Zeta коллекция', emoji:'🎯', isNew:false, prices:{small:{stars:80,usdt:8},medium:{stars:160,usdt:16},large:{stars:320,usdt:32}} },
-    { id:'product_8',  name:'Eta Pack',     desc:'Эксклюзивная Eta серия', emoji:'💫', isNew:false, prices:{small:{stars:90,usdt:9},medium:{stars:180,usdt:18},large:{stars:360,usdt:36}} },
-    { id:'product_9',  name:'Theta Pack',   desc:'Премиум Theta выпуск', emoji:'🔮', isNew:false, prices:{small:{stars:110,usdt:11},medium:{stars:220,usdt:22},large:{stars:440,usdt:44}} },
-    { id:'product_10', name:'Iota Pack',    desc:'Лимитированный Iota архив', emoji:'🏆', isNew:false, prices:{small:{stars:120,usdt:12},medium:{stars:240,usdt:24},large:{stars:480,usdt:48}} },
-    { id:'product_11', name:'Kappa Pack',   desc:'Kappa эксклюзив — топ контент', emoji:'💥', isNew:false, prices:{small:{stars:130,usdt:13},medium:{stars:260,usdt:26},large:{stars:520,usdt:52}} },
-    { id:'product_12', name:'Lambda Pack',  desc:'Lambda коллекция — редкие файлы', emoji:'🎪', isNew:false, prices:{small:{stars:140,usdt:14},medium:{stars:280,usdt:28},large:{stars:560,usdt:56}} },
-    { id:'product_13', name:'Mu Pack',      desc:'Mu серия — эксклюзив', emoji:'🎭', isNew:false, prices:{small:{stars:50,usdt:5},medium:{stars:100,usdt:10},large:{stars:200,usdt:20}} },
-    { id:'product_14', name:'Nu Pack',      desc:'Nu архив — полная коллекция', emoji:'🌈', isNew:false, prices:{small:{stars:70,usdt:7},medium:{stars:140,usdt:14},large:{stars:280,usdt:28}} },
-    { id:'product_15', name:'Xi Pack',      desc:'Xi выпуск — лимитированный', emoji:'🎸', isNew:false, prices:{small:{stars:85,usdt:8.5},medium:{stars:170,usdt:17},large:{stars:340,usdt:34}} },
-    { id:'product_16', name:'Omicron Pack', desc:'Omicron коллекция', emoji:'🎬', isNew:false, prices:{small:{stars:95,usdt:9.5},medium:{stars:190,usdt:19},large:{stars:380,usdt:38}} },
-    { id:'product_17', name:'Pi Pack',      desc:'Pi серия — эксклюзивный контент', emoji:'🎵', isNew:false, prices:{small:{stars:105,usdt:10.5},medium:{stars:210,usdt:21},large:{stars:420,usdt:42}} },
-    { id:'product_18', name:'Rho Pack',     desc:'Rho архив — редкая коллекция', emoji:'🎨', isNew:false, prices:{small:{stars:115,usdt:11.5},medium:{stars:230,usdt:23},large:{stars:460,usdt:46}} },
-    { id:'product_19', name:'Tau Pack',     desc:'Tau выпуск — топ качество', emoji:'🏅', isNew:false, prices:{small:{stars:125,usdt:12.5},medium:{stars:250,usdt:25},large:{stars:500,usdt:50}} },
-    { id:'product_20', name:'Upsilon Pack', desc:'Upsilon коллекция — финальный выпуск', emoji:'💯', isNew:false, prices:{small:{stars:175,usdt:17.5},medium:{stars:350,usdt:35},large:{stars:700,usdt:70}} },
-  ];
-  renderGrid();
-}
-
-const SIZES = [
-  {key:'small', label:'S', sub:'Маленький'},
-  {key:'medium',label:'M', sub:'Средний'},
-  {key:'large', label:'L', sub:'Большой'},
+// ── Demo products (shown when API is unreachable / browser preview) ──────
+const DEMO_PRODUCTS = [
+  {id:1,name:"Vortex Pack",emoji:"🌀",description:"Exclusive Vortex series",size_labels:{S:"🔥 7,200+ new files added daily\n🎬 3,841 videos available\n📦 721 videos + 148 photos",M:"🔥 9,100+ new files added daily\n🎬 5,203 videos available\n📦 1,047 videos + 213 photos",L:"🔥 12,400+ new files added daily\n🎬 7,918 videos available\n📦 1,583 videos + 342 photos"}},
+  {id:2,name:"Eclipse Pack",emoji:"🌑",description:"Exclusive Eclipse series",size_labels:{S:"🔥 6,800+ new files added daily\n🎬 4,012 videos available\n📦 803 videos + 161 photos",M:"🔥 9,300+ new files added daily\n🎬 5,517 videos available\n📦 1,103 videos + 228 photos",L:"🔥 13,100+ new files added daily\n🎬 8,234 videos available\n📦 1,647 videos + 371 photos"}},
+  {id:3,name:"Nova Pack",emoji:"✨",description:"Exclusive Nova series",size_labels:{S:"🔥 7,500+ new files added daily\n🎬 3,967 videos available\n📦 793 videos + 154 photos",M:"🔥 9,800+ new files added daily\n🎬 5,641 videos available\n📦 1,128 videos + 247 photos",L:"🔥 13,700+ new files added daily\n🎬 8,502 videos available\n📦 1,700 videos + 358 photos"}},
+  {id:4,name:"Phantom Pack",emoji:"👻",description:"Exclusive Phantom series",size_labels:{S:"🔥 7,000+ new files added daily\n🎬 3,728 videos available\n📦 745 videos + 143 photos",M:"🔥 9,500+ new files added daily\n🎬 5,384 videos available\n📦 1,077 videos + 219 photos",L:"🔥 12,900+ new files added daily\n🎬 7,856 videos available\n📦 1,571 videos + 329 photos"}},
+  {id:5,name:"Blaze Pack",emoji:"🔥",description:"Exclusive Blaze series",size_labels:{S:"🔥 8,100+ new files added daily\n🎬 4,219 videos available\n📦 843 videos + 167 photos",M:"🔥 10,200+ new files added daily\n🎬 5,873 videos available\n📦 1,175 videos + 258 photos",L:"🔥 14,300+ new files added daily\n🎬 8,941 videos available\n📦 1,788 videos + 392 photos"}},
+  {id:6,name:"Cipher Pack",emoji:"🔐",description:"Exclusive Cipher series",size_labels:{S:"🔥 6,600+ new files added daily\n🎬 3,514 videos available\n📦 703 videos + 139 photos",M:"🔥 9,000+ new files added daily\n🎬 5,128 videos available\n📦 1,026 videos + 204 photos",L:"🔥 12,500+ new files added daily\n🎬 7,692 videos available\n📦 1,538 videos + 318 photos"}},
+  {id:7,name:"Storm Pack",emoji:"⚡",description:"Exclusive Storm series",size_labels:{S:"🔥 7,900+ new files added daily\n🎬 4,103 videos available\n📦 821 videos + 172 photos",M:"🔥 10,100+ new files added daily\n🎬 5,762 videos available\n📦 1,152 videos + 241 photos",L:"🔥 13,900+ new files added daily\n🎬 8,674 videos available\n📦 1,735 videos + 367 photos"}},
+  {id:8,name:"Abyss Pack",emoji:"🌊",description:"Exclusive Abyss series",size_labels:{S:"🔥 6,400+ new files added daily\n🎬 3,389 videos available\n📦 678 videos + 131 photos",M:"🔥 8,700+ new files added daily\n🎬 4,901 videos available\n📦 980 videos + 197 photos",L:"🔥 12,100+ new files added daily\n🎬 7,423 videos available\n📦 1,485 videos + 311 photos"}},
+  {id:9,name:"Titan Pack",emoji:"🏔️",description:"Exclusive Titan series",size_labels:{S:"🔥 8,300+ new files added daily\n🎬 4,378 videos available\n📦 876 videos + 184 photos",M:"🔥 10,500+ new files added daily\n🎬 6,012 videos available\n📦 1,202 videos + 263 photos",L:"🔥 14,600+ new files added daily\n🎬 9,104 videos available\n📦 1,821 videos + 398 photos"}},
+  {id:10,name:"Mirage Pack",emoji:"🏜️",description:"Exclusive Mirage series",size_labels:{S:"🔥 7,100+ new files added daily\n🎬 3,856 videos available\n📦 771 videos + 158 photos",M:"🔥 9,400+ new files added daily\n🎬 5,293 videos available\n📦 1,059 videos + 218 photos",L:"🔥 13,200+ new files added daily\n🎬 8,017 videos available\n📦 1,603 videos + 344 photos"}},
+  {id:11,name:"Nebula Pack",emoji:"🌌",description:"Exclusive Nebula series",size_labels:{S:"🔥 7,700+ new files added daily\n🎬 4,091 videos available\n📦 818 videos + 169 photos",M:"🔥 9,900+ new files added daily\n🎬 5,634 videos available\n📦 1,127 videos + 244 photos",L:"🔥 13,500+ new files added daily\n🎬 8,349 videos available\n📦 1,670 videos + 361 photos"}},
+  {id:12,name:"Pulse Pack",emoji:"💥",description:"Exclusive Pulse series",size_labels:{S:"🔥 6,900+ new files added daily\n🎬 3,647 videos available\n📦 729 videos + 145 photos",M:"🔥 9,200+ new files added daily\n🎬 5,241 videos available\n📦 1,048 videos + 211 photos",L:"🔥 12,700+ new files added daily\n🎬 7,784 videos available\n📦 1,557 videos + 335 photos"}},
+  {id:13,name:"Rogue Pack",emoji:"🎭",description:"Exclusive Rogue series",size_labels:{S:"🔥 7,400+ new files added daily\n🎬 3,924 videos available\n📦 785 videos + 163 photos",M:"🔥 9,700+ new files added daily\n🎬 5,512 videos available\n📦 1,102 videos + 232 photos",L:"🔥 13,400+ new files added daily\n🎬 8,278 videos available\n📦 1,656 videos + 352 photos"}},
+  {id:14,name:"Spectre Pack",emoji:"👁️",description:"Exclusive Spectre series",size_labels:{S:"🔥 7,600+ new files added daily\n🎬 4,047 videos available\n📦 809 videos + 171 photos",M:"🔥 9,600+ new files added daily\n🎬 5,483 videos available\n📦 1,097 videos + 237 photos",L:"🔥 13,300+ new files added daily\n🎬 8,191 videos available\n📦 1,638 videos + 356 photos"}},
+  {id:15,name:"Flux Pack",emoji:"⚗️",description:"Exclusive Flux series",size_labels:{S:"🔥 6,700+ new files added daily\n🎬 3,571 videos available\n📦 714 videos + 141 photos",M:"🔥 9,100+ new files added daily\n🎬 5,174 videos available\n📦 1,035 videos + 207 photos",L:"🔥 12,600+ new files added daily\n🎬 7,738 videos available\n📦 1,548 videos + 322 photos"}},
+  {id:16,name:"Zenith Pack",emoji:"🎯",description:"Exclusive Zenith series",size_labels:{S:"🔥 8,000+ new files added daily\n🎬 4,162 videos available\n📦 832 videos + 175 photos",M:"🔥 10,300+ new files added daily\n🎬 5,921 videos available\n📦 1,184 videos + 251 photos",L:"🔥 14,100+ new files added daily\n🎬 8,807 videos available\n📦 1,761 videos + 379 photos"}},
+  {id:17,name:"Apex Pack",emoji:"🏆",description:"Exclusive Apex series",size_labels:{S:"🔥 8,500+ new files added daily\n🎬 4,437 videos available\n📦 887 videos + 189 photos",M:"🔥 10,700+ new files added daily\n🎬 6,083 videos available\n📦 1,217 videos + 271 photos",L:"🔥 14,800+ new files added daily\n🎬 9,231 videos available\n📦 1,846 videos + 413 photos"}},
+  {id:18,name:"Void Pack",emoji:"🕳️",description:"Exclusive Void series",size_labels:{S:"🔥 6,500+ new files added daily\n🎬 3,451 videos available\n📦 690 videos + 137 photos",M:"🔥 8,900+ new files added daily\n🎬 5,037 videos available\n📦 1,007 videos + 201 photos",L:"🔥 12,300+ new files added daily\n🎬 7,561 videos available\n📦 1,512 videos + 314 photos"}},
+  {id:19,name:"Surge Pack",emoji:"🌪️",description:"Exclusive Surge series",size_labels:{S:"🔥 7,800+ new files added daily\n🎬 4,134 videos available\n📦 827 videos + 173 photos",M:"🔥 10,000+ new files added daily\n🎬 5,798 videos available\n📦 1,160 videos + 248 photos",L:"🔥 14,000+ new files added daily\n🎬 8,763 videos available\n📦 1,753 videos + 383 photos"}},
+  {id:20,name:"Prism Pack",emoji:"🔮",description:"Exclusive Prism series",size_labels:{S:"🔥 7,300+ new files added daily\n🎬 3,891 videos available\n📦 778 videos + 156 photos",M:"🔥 9,500+ new files added daily\n🎬 5,427 videos available\n📦 1,085 videos + 226 photos",L:"🔥 13,000+ new files added daily\n🎬 8,104 videos available\n📦 1,621 videos + 347 photos"}},
 ];
-const PAY_METHODS = [
-  {key:'stars',  icon:'⭐', name:'Telegram Stars', sub:'Мгновенно'},
-  {key:'crypto', icon:'💎', name:'USDT (TRC-20)',  sub:'По реквизитам'},
-  {key:'card',   icon:'💳', name:'Банковская карта', sub:'Скоро', disabled:true},
-];
+const DEMO_PRICES = {
+  S:{stars:1500,usdt:12.50},
+  M:{stars:2500,usdt:20.00},
+  L:{stars:5000,usdt:40.00},
+};
 
-let cur=null, selSize='medium', selMethod='stars';
-
-function renderGrid() {
-  const g = document.getElementById('grid');
-  g.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const minPrice = p.prices.small.usdt;
-    const d = document.createElement('div');
-    d.className = 'card';
-    d.innerHTML =
-      (p.isNew ? '<div class="new-badge">NEW</div>' : '') +
-      '<div class="card-header">' +
-        '<div class="card-emoji">' + p.emoji + '</div>' +
-        '<div class="card-info">' +
-          '<div class="card-name">' + p.name + '</div>' +
-          '<div class="card-price">от ' + minPrice + ' USDT</div>' +
-        '</div>' +
-      '</div>' +
-      '<button class="add-btn" onclick="openProduct(\'' + p.id + '\',event)">ADD</button>';
-    g.appendChild(d);
-  });
-  document.getElementById('loader').style.display = 'none';
-  g.style.display = 'grid';
-}
-
-function openProduct(id, e) {
-  e && e.stopPropagation();
-  haptic('light');
-  cur = PRODUCTS.find(p => p.id === id);
-  if (!cur) return;
-  document.getElementById('s-name').textContent = cur.emoji + ' ' + cur.name;
-  document.getElementById('s-desc').textContent = cur.desc;
-  renderSizes();
-  renderMethods();
-  updateCTA();
-  document.getElementById('overlay').classList.add('open');
-  document.getElementById('sheet').classList.add('open');
-}
-
-function closeSheet() {
-  document.getElementById('overlay').classList.remove('open');
-  document.getElementById('sheet').classList.remove('open');
-  haptic('light');
-}
-
-function renderSizes() {
-  const g = document.getElementById('size-grid');
-  g.innerHTML = '';
-  SIZES.forEach(s => {
-    const p = cur.prices[s.key];
-    const active = s.key === selSize;
-    const d = document.createElement('div');
-    d.className = 'size-card' + (active ? ' active' : '');
-    d.onclick = () => { selSize = s.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
-    d.innerHTML =
-      '<span class="sz-label">' + s.label + '</span>' +
-      '<span class="sz-sub">' + s.sub + '</span>' +
-      '<div class="sz-price' + (active && selMethod==='stars' ? ' hi':'') + '">⭐ ' + p.stars + '</div>' +
-      '<div class="sz-price' + (active && selMethod==='crypto'? ' hi':'') + '">💎 ' + p.usdt + '$</div>';
-    g.appendChild(d);
-  });
-}
-
-function renderMethods() {
-  const c = document.getElementById('pay-methods');
-  c.innerHTML = '';
-  const p = cur.prices[selSize];
-  PAY_METHODS.forEach(m => {
-    const active = m.key === selMethod;
-    const amt = m.key==='stars' ? p.stars+' ⭐' : m.key==='crypto' ? p.usdt+' USDT' : 'скоро';
-    const d = document.createElement('div');
-    d.className = 'pay-method'+(active?' active':'')+(m.disabled?' dim':'');
-    if (!m.disabled) d.onclick = () => { selMethod=m.key; haptic('light'); renderSizes(); renderMethods(); updateCTA(); };
-    d.innerHTML =
-      '<div class="pay-icon">'+m.icon+'</div>' +
-      '<div class="pay-info"><div class="pay-name">'+m.name+'</div><div class="pay-sub">'+m.sub+'</div></div>' +
-      '<div class="pay-amt">'+amt+'</div>' +
-      '<div class="pay-radio"></div>';
-    c.appendChild(d);
-  });
-}
-
-function updateCTA() {
-  const btn = document.getElementById('cta-btn');
-  if (!cur) return;
-  const p = cur.prices[selSize];
-  if (selMethod==='stars')  { btn.textContent='Купить за '+p.stars+' ⭐ Stars'; btn.disabled=false; }
-  else if (selMethod==='crypto') { btn.textContent='Оплатить '+p.usdt+' USDT'; btn.disabled=false; }
-  else { btn.textContent='💳 Скоро'; btn.disabled=true; }
-}
-
-function buyNow() {
-  if (!cur) return;
-  haptic('medium');
-  const method = selMethod === 'stars' ? 'stars' : 'crypto';
-  const cmd = method + '__' + cur.id + '__' + selSize;
-  const url = 'https://t.me/' + BOT_USERNAME + '?start=' + cmd;
-  if (tg && tg.openTelegramLink) {
-    tg.openTelegramLink(url);
-  } else {
-    window.open(url, '_blank');
+// ── Init ────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch(`${API_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: tg.initData }),
+    });
+    if (!res.ok) throw new Error("API error");
+    const data = await res.json();
+    products = data.products;
+    prices = data.prices;
+    renderGrid(products);
+  } catch (e) {
+    // API unreachable — use demo data (browser preview / no backend yet)
+    products = DEMO_PRODUCTS;
+    prices = DEMO_PRICES;
+    renderGrid(products);
   }
 }
 
+// ── Grid rendering ──────────────────────────────────────────────────────
+function renderGrid(list) {
+  const grid = document.getElementById("grid");
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div>No products found</div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map((p, i) => `
+    <div class="card" onclick="openSheet(${p.id})">
+      <div class="card-glow"></div>
+      ${i === 0 ? '<div class="card-badge">NEW</div>' : ""}
+      <span class="card-emoji">${p.emoji}</span>
+      <div class="card-name">${p.name}</div>
+      <div class="card-price">from ${prices.S?.usdt || "—"} USDT</div>
+      <button class="add-btn" onclick="event.stopPropagation(); openSheet(${p.id})">ADD</button>
+    </div>
+  `).join("");
+}
 
-function haptic(t) { try { tg?.HapticFeedback?.impactOccurred(t); } catch{} }
+// ── Sheet ───────────────────────────────────────────────────────────────
+function openSheet(productId) {
+  selectedProduct = products.find(p => p.id === productId);
+  if (!selectedProduct) return;
+  selectedSize = "M";
+  selectedMethod = "stars";
 
-loadProducts();
+  document.getElementById("sheetEmoji").textContent = selectedProduct.emoji;
+  document.getElementById("sheetTitle").textContent = selectedProduct.name;
+  document.getElementById("sheetDesc").textContent = selectedProduct.description;
+
+  renderSizes();
+  updateMethodAmounts();
+  updateBuyBtn();
+
+  showProductScreen();
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("sheet").classList.add("show");
+}
+
+function closeSheet() {
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("sheet").classList.remove("show");
+  clearTimer();
+}
+
+document.getElementById("overlay").addEventListener("click", closeSheet);
+
+function showProductScreen() {
+  document.getElementById("productScreen").classList.remove("hide");
+  document.getElementById("cryptoScreen").classList.remove("show");
+}
+
+function showCryptoScreen() {
+  document.getElementById("productScreen").classList.add("hide");
+  document.getElementById("cryptoScreen").classList.add("show");
+}
+
+// ── Sizes ───────────────────────────────────────────────────────────────
+function renderSizes() {
+  const sizes = ["S", "M", "L"];
+  const names = { S: "Small", M: "Medium", L: "Large" };
+  document.getElementById("sizes").innerHTML = sizes.map(s => `
+    <div class="size-card ${s === selectedSize ? "active" : ""}" onclick="selectSize('${s}')">
+      <div class="size-letter">${s}</div>
+      <div class="size-info">${selectedProduct.size_labels[s] || ""}</div>
+      <div class="size-price">⭐ ${prices[s]?.stars || "—"}</div>
+    </div>
+  `).join("");
+}
+
+function selectSize(s) {
+  selectedSize = s;
+  renderSizes();
+  updateMethodAmounts();
+  updateBuyBtn();
+}
+
+// ── Method ──────────────────────────────────────────────────────────────
+function selectMethod(m) {
+  if (m === "card") return;
+  selectedMethod = m;
+  document.querySelectorAll(".method-card[data-method]").forEach(el => {
+    el.classList.toggle("active", el.dataset.method === m);
+  });
+  updateBuyBtn();
+}
+
+function updateMethodAmounts() {
+  const p = prices[selectedSize] || {};
+  document.getElementById("starsAmt").textContent = p.stars ? `${p.stars} ⭐` : "—";
+  document.getElementById("usdtAmt").textContent = p.usdt ? `${p.usdt} USDT` : "—";
+}
+
+function updateBuyBtn() {
+  const btn = document.getElementById("buyBtn");
+  const p = prices[selectedSize] || {};
+  if (selectedMethod === "stars") {
+    btn.textContent = `Buy for ${p.stars || "—"} ⭐ Stars`;
+  } else {
+    btn.textContent = `Pay ${p.usdt || "—"} USDT`;
+  }
+}
+
+// ── Buy ──────────────────────────────────────────────────────────────────
+async function handleBuy() {
+  if (!selectedProduct) return;
+  if (selectedMethod === "stars") {
+    await handleStarsBuy();
+  } else if (selectedMethod === "usdt") {
+    await handleUsdtBuy();
+  }
+}
+
+async function handleStarsBuy() {
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = true;
+  btn.textContent = "Processing...";
+
+  try {
+    const res = await fetch(`${API_URL}/api/pay-stars`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        init_data: tg.initData,
+        product_id: selectedProduct.id,
+        size: selectedSize,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Close mini app — bot will send invoice
+      tg.close();
+      // Bot listens for the close and sends invoice based on payload stored server-side
+      // Actually we need to send a message to bot via sendData
+      tg.sendData(JSON.stringify({
+        action: "buy_stars",
+        product_id: selectedProduct.id,
+        product_name: selectedProduct.name,
+        size: selectedSize,
+        stars: data.stars,
+      }));
+    }
+  } catch (e) {
+    btn.disabled = false;
+    updateBuyBtn();
+  }
+}
+
+async function handleUsdtBuy() {
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = true;
+  btn.textContent = "Generating address...";
+
+  try {
+    const res = await fetch(`${API_URL}/api/init-crypto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        init_data: tg.initData,
+        product_id: selectedProduct.id,
+        size: selectedSize,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      pendingId = data.pending_id;
+      cryptoWallet = data.wallet;
+      cryptoAmount = data.amount;
+      expiresAt = data.expires_at;
+
+      document.getElementById("cryptoAmount").textContent = `${data.amount} USDT`;
+      document.getElementById("cryptoWallet").textContent = data.wallet;
+      document.getElementById("statusMsg").className = "status-msg";
+      document.getElementById("statusMsg").textContent = "";
+      document.getElementById("paidBtn").disabled = false;
+
+      showCryptoScreen();
+      startTimer();
+    }
+  } catch (e) {
+    btn.disabled = false;
+    updateBuyBtn();
+  }
+}
+
+// ── Crypto check ─────────────────────────────────────────────────────────
+async function checkPayment() {
+  const btn = document.getElementById("paidBtn");
+  const status = document.getElementById("statusMsg");
+
+  btn.disabled = true;
+  btn.textContent = "Checking blockchain...";
+  status.className = "status-msg loading";
+  status.textContent = "⏳ Searching for your transaction on the blockchain...";
+
+  try {
+    const res = await fetch(`${API_URL}/api/confirm-crypto-delivery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: tg.initData, pending_id: pendingId }),
+    });
+    const data = await res.json();
+
+    if (data.ok && data.confirmed) {
+      status.className = "status-msg success";
+      status.textContent = "✅ Payment confirmed! Your link has been sent to the chat.";
+      clearTimer();
+      setTimeout(() => tg.close(), 2500);
+    } else if (data.reason === "expired") {
+      status.className = "status-msg error";
+      status.textContent = "⏰ Payment window expired. Please start a new purchase.";
+    } else {
+      status.className = "status-msg error";
+      status.textContent = "❌ Payment not found yet. Make sure you sent the exact amount and try again in a minute.";
+      btn.disabled = false;
+      btn.textContent = "✅ I've Paid — Check Again";
+    }
+  } catch (e) {
+    status.className = "status-msg error";
+    status.textContent = "⚠️ Network error. Please try again.";
+    btn.disabled = false;
+    btn.textContent = "✅ I've Paid — Check Again";
+  }
+}
+
+function cancelCrypto() {
+  clearTimer();
+  showProductScreen();
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = false;
+  updateBuyBtn();
+}
+
+// ── Timer ────────────────────────────────────────────────────────────────
+function startTimer() {
+  clearTimer();
+  timerInterval = setInterval(() => {
+    const remaining = expiresAt - Math.floor(Date.now() / 1000);
+    if (remaining <= 0) {
+      clearTimer();
+      document.getElementById("timerDisplay").textContent = "00:00";
+      document.getElementById("paidBtn").disabled = true;
+      document.getElementById("statusMsg").className = "status-msg error";
+      document.getElementById("statusMsg").textContent = "⏰ Payment window expired.";
+      return;
+    }
+    const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+    const s = String(remaining % 60).padStart(2, "0");
+    document.getElementById("timerDisplay").textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function clearTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ── Copy helpers ─────────────────────────────────────────────────────────
+function copyAmount() {
+  navigator.clipboard.writeText(String(cryptoAmount)).then(() => {
+    tg.showAlert("Amount copied!");
+  }).catch(() => {});
+}
+function copyWallet() {
+  navigator.clipboard.writeText(cryptoWallet).then(() => {
+    tg.showAlert("Wallet address copied!");
+  }).catch(() => {});
+}
+
+// ── Start ────────────────────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
