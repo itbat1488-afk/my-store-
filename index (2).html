@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Exclusive Store</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #17171e;
+    --surface2: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --accent: #f5a623;
+    --accent2: #ff6b35;
+    --text: #f0f0f5;
+    --muted: #8888a0;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 20px 18px 12px;
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .cart-badge {
+    background: var(--accent);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: none;
+  }
+
+  /* ── Search / Filter bar ── */
+  .filter-bar { display: flex; gap: 8px; margin-top: 14px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 500; }
+
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 16px 14px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 12px 12px;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:active { transform: scale(0.97); }
+  .card:hover { border-color: rgba(245,166,35,0.35); box-shadow: 0 4px 24px rgba(245,166,35,0.08); }
+
+  .card-glow {
+    position: absolute; top: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .card-emoji { font-size: 28px; margin-bottom: 8px; display: block; }
+  .card-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .card-price { color: var(--accent); font-size: 12px; font-weight: 500; }
+  .card-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000; font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+  }
+  .add-btn {
+    margin-top: 10px;
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .add-btn:active { opacity: 0.8; }
+
+  /* ── Bottom Sheet ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.show { opacity: 1; pointer-events: all; }
+
+  .sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    z-index: 300;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.32,.72,0,1);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .sheet.show { transform: translateY(0); }
+  .sheet-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 14px auto 20px;
+  }
+  .sheet-inner { padding: 0 20px 24px; }
+
+  .sheet-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .sheet-emoji { font-size: 36px; }
+  .sheet-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; }
+  .sheet-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .section-label {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 10px;
+  }
+
+  /* Size selector */
+  .sizes { display: flex; gap: 8px; margin-bottom: 20px; }
+  .size-card {
+    flex: 1;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .size-card.active { border-color: var(--accent); background: rgba(245,166,35,0.08); }
+  .size-letter { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 4px; }
+  .size-info { font-size: 10px; color: var(--muted); line-height: 1.4; white-space: pre-line; }
+  .size-price { margin-top: 6px; font-size: 11px; color: var(--accent); font-weight: 600; }
+
+  /* Payment methods */
+  .methods { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .method-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .method-card.active { border-color: var(--accent); }
+  .method-card.disabled { opacity: 0.45; cursor: not-allowed; }
+  .method-icon { font-size: 22px; flex-shrink: 0; }
+  .method-name { font-weight: 600; font-size: 14px; flex: 1; }
+  .method-sub { font-size: 11px; color: var(--muted); }
+  .method-amount { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--accent); font-size: 14px; }
+  .method-radio {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .method-card.active .method-radio { border-color: var(--accent); }
+  .method-radio-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: none;
+  }
+  .method-card.active .method-radio-dot { display: block; }
+
+  .buy-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  .buy-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+  /* ── Crypto payment screen ── */
+  .crypto-screen { display: none; }
+  .crypto-screen.show { display: block; }
+  .product-screen { display: block; }
+  .product-screen.hide { display: none; }
+
+  .crypto-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .crypto-box-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .crypto-wallet {
+    font-family: monospace; font-size: 13px;
+    word-break: break-all; line-height: 1.5;
+  }
+  .crypto-amount { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--accent); }
+  .crypto-amount-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .copy-btn {
+    margin-top: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .timer {
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .timer span { color: var(--accent); font-weight: 700; font-family: 'Syne', sans-serif; }
+
+  .paid-btn {
+    width: 100%;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: opacity .15s;
+  }
+  .paid-btn:active { opacity: 0.85; }
+  .paid-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status-msg {
+    text-align: center;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    display: none;
+  }
+  .status-msg.error { background: rgba(239,68,68,0.1); color: var(--red); display: block; }
+  .status-msg.success { background: rgba(34,197,94,0.1); color: var(--green); display: block; }
+  .status-msg.loading { background: rgba(59,130,246,0.1); color: var(--blue); display: block; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">🏪</div>
+      <div>
+        <div class="logo-text">Exclusive Store</div>
+        <div class="logo-sub">Premium digital content</div>
+      </div>
+    </div>
+  </div>
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-btn active" data-filter="all">All</button>
+  </div>
+</div>
+
+<!-- Product Grid -->
+<div class="grid" id="grid">
+  <div class="empty"><div class="empty-icon">⏳</div><div>Loading...</div></div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Bottom Sheet -->
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-inner">
+
+    <!-- Product view -->
+    <div class="product-screen" id="productScreen">
+      <div class="sheet-header">
+        <div class="sheet-emoji" id="sheetEmoji">📦</div>
+        <div>
+          <div class="sheet-title" id="sheetTitle">Pack Name</div>
+        </div>
+      </div>
+      <div class="sheet-desc" id="sheetDesc">Exclusive series</div>
+
+      <div class="section-label">Choose size</div>
+      <div class="sizes" id="sizes"></div>
+
+      <div class="section-label">Payment method</div>
+      <div class="methods">
+        <div class="method-card active" data-method="stars" onclick="selectMethod('stars')">
+          <span class="method-icon">⭐</span>
+          <div style="flex:1">
+            <div class="method-name">Telegram Stars</div>
+            <div class="method-sub">Instant delivery</div>
+          </div>
+          <div class="method-amount" id="starsAmt">—</div>
+          <div class="method-radio"><div class="method-radio-dot"></div></div>
+        </div>
+        <div class="method-card" data-method="usdt" onclick="selectMethod('usdt')">
+          <span class="method-icon">💎</span>
+          <div style="flex:1">
+            <div class="method-name">USDT (TRC-20)</div>
+            <div class="method-sub">Via wallet transfer</div>
+          </div>
+          <div class="method-amount" id="usdtAmt">—</div>
+          <div class="method-radio"><div class="method-radio-dot"></div></div>
+        </div>
+        <div class="method-card disabled" data-method="card">
+          <span class="method-icon">💳</span>
+          <div style="flex:1">
+            <div class="method-name">Bank Card</div>
+            <div class="method-sub">Coming soon</div>
+          </div>
+          <div style="color:var(--muted);font-size:12px">Soon</div>
+          <div class="method-radio"></div>
+        </div>
+      </div>
+
+      <button class="buy-btn" id="buyBtn" onclick="handleBuy()">Buy with ⭐ Stars</button>
+    </div>
+
+    <!-- Crypto payment view -->
+    <div class="crypto-screen" id="cryptoScreen">
+      <div class="sheet-header" style="margin-bottom:16px">
+        <div class="sheet-emoji">💎</div>
+        <div>
+          <div class="sheet-title">USDT Payment</div>
+          <div style="color:var(--muted);font-size:13px">TRC-20 Network</div>
+        </div>
+      </div>
+
+      <div class="crypto-box">
+        <div class="crypto-box-label">Send exactly this amount</div>
+        <div class="crypto-amount" id="cryptoAmount">— USDT</div>
+        <div class="crypto-amount-sub">⚠️ Send the exact amount shown — it identifies your payment</div>
+        <button class="copy-btn" onclick="copyAmount()">📋 Copy amount</button>
+      </div>
+
+      <div class="crypto-box">
+        <div class="crypto-box-label">To this wallet (TRC-20)</div>
+        <div class="crypto-wallet" id="cryptoWallet">—</div>
+        <button class="copy-btn" onclick="copyWallet()">📋 Copy address</button>
+      </div>
+
+      <div class="timer">⏱ Time remaining: <span id="timerDisplay">20:00</span></div>
+      <div class="status-msg" id="statusMsg"></div>
+
+      <button class="paid-btn" id="paidBtn" onclick="checkPayment()">✅ I've Paid — Check Now</button>
+      <button style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);padding:12px;font-size:14px;cursor:pointer;" onclick="cancelCrypto()">Cancel</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────
+const API_URL = "https://your-vps-ip-or-domain.com"; // ← update this
+const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
+  ready: () => {},
+  expand: () => {},
+  close: () => { alert('Would close mini app'); },
+  sendData: (d) => { console.log('sendData:', d); },
+  showAlert: (msg) => { alert(msg); },
+  initData: 'test_mode',
+};
+tg.ready();
+tg.expand();
+
+// State
+let products = [];
+let prices = {};
+let selectedProduct = null;
+let selectedSize = "M";
+let selectedMethod = "stars";
+let pendingId = null;
+let cryptoWallet = null;
+let cryptoAmount = null;
+let timerInterval = null;
+let expiresAt = null;
+
+// ── Demo products (shown when API is unreachable / browser preview) ──────
+const DEMO_PRODUCTS = [
+  {id:1,name:"Vortex Pack",emoji:"🌀",description:"Exclusive Vortex series",size_labels:{S:"🔥 7,200+ new files added daily\n🎬 3,841 videos available\n📦 721 videos + 148 photos",M:"🔥 9,100+ new files added daily\n🎬 5,203 videos available\n📦 1,047 videos + 213 photos",L:"🔥 12,400+ new files added daily\n🎬 7,918 videos available\n📦 1,583 videos + 342 photos"}},
+  {id:2,name:"Eclipse Pack",emoji:"🌑",description:"Exclusive Eclipse series",size_labels:{S:"🔥 6,800+ new files added daily\n🎬 4,012 videos available\n📦 803 videos + 161 photos",M:"🔥 9,300+ new files added daily\n🎬 5,517 videos available\n📦 1,103 videos + 228 photos",L:"🔥 13,100+ new files added daily\n🎬 8,234 videos available\n📦 1,647 videos + 371 photos"}},
+  {id:3,name:"Nova Pack",emoji:"✨",description:"Exclusive Nova series",size_labels:{S:"🔥 7,500+ new files added daily\n🎬 3,967 videos available\n📦 793 videos + 154 photos",M:"🔥 9,800+ new files added daily\n🎬 5,641 videos available\n📦 1,128 videos + 247 photos",L:"🔥 13,700+ new files added daily\n🎬 8,502 videos available\n📦 1,700 videos + 358 photos"}},
+  {id:4,name:"Phantom Pack",emoji:"👻",description:"Exclusive Phantom series",size_labels:{S:"🔥 7,000+ new files added daily\n🎬 3,728 videos available\n📦 745 videos + 143 photos",M:"🔥 9,500+ new files added daily\n🎬 5,384 videos available\n📦 1,077 videos + 219 photos",L:"🔥 12,900+ new files added daily\n🎬 7,856 videos available\n📦 1,571 videos + 329 photos"}},
+  {id:5,name:"Blaze Pack",emoji:"🔥",description:"Exclusive Blaze series",size_labels:{S:"🔥 8,100+ new files added daily\n🎬 4,219 videos available\n📦 843 videos + 167 photos",M:"🔥 10,200+ new files added daily\n🎬 5,873 videos available\n📦 1,175 videos + 258 photos",L:"🔥 14,300+ new files added daily\n🎬 8,941 videos available\n📦 1,788 videos + 392 photos"}},
+  {id:6,name:"Cipher Pack",emoji:"🔐",description:"Exclusive Cipher series",size_labels:{S:"🔥 6,600+ new files added daily\n🎬 3,514 videos available\n📦 703 videos + 139 photos",M:"🔥 9,000+ new files added daily\n🎬 5,128 videos available\n📦 1,026 videos + 204 photos",L:"🔥 12,500+ new files added daily\n🎬 7,692 videos available\n📦 1,538 videos + 318 photos"}},
+  {id:7,name:"Storm Pack",emoji:"⚡",description:"Exclusive Storm series",size_labels:{S:"🔥 7,900+ new files added daily\n🎬 4,103 videos available\n📦 821 videos + 172 photos",M:"🔥 10,100+ new files added daily\n🎬 5,762 videos available\n📦 1,152 videos + 241 photos",L:"🔥 13,900+ new files added daily\n🎬 8,674 videos available\n📦 1,735 videos + 367 photos"}},
+  {id:8,name:"Abyss Pack",emoji:"🌊",description:"Exclusive Abyss series",size_labels:{S:"🔥 6,400+ new files added daily\n🎬 3,389 videos available\n📦 678 videos + 131 photos",M:"🔥 8,700+ new files added daily\n🎬 4,901 videos available\n📦 980 videos + 197 photos",L:"🔥 12,100+ new files added daily\n🎬 7,423 videos available\n📦 1,485 videos + 311 photos"}},
+  {id:9,name:"Titan Pack",emoji:"🏔️",description:"Exclusive Titan series",size_labels:{S:"🔥 8,300+ new files added daily\n🎬 4,378 videos available\n📦 876 videos + 184 photos",M:"🔥 10,500+ new files added daily\n🎬 6,012 videos available\n📦 1,202 videos + 263 photos",L:"🔥 14,600+ new files added daily\n🎬 9,104 videos available\n📦 1,821 videos + 398 photos"}},
+  {id:10,name:"Mirage Pack",emoji:"🏜️",description:"Exclusive Mirage series",size_labels:{S:"🔥 7,100+ new files added daily\n🎬 3,856 videos available\n📦 771 videos + 158 photos",M:"🔥 9,400+ new files added daily\n🎬 5,293 videos available\n📦 1,059 videos + 218 photos",L:"🔥 13,200+ new files added daily\n🎬 8,017 videos available\n📦 1,603 videos + 344 photos"}},
+  {id:11,name:"Nebula Pack",emoji:"🌌",description:"Exclusive Nebula series",size_labels:{S:"🔥 7,700+ new files added daily\n🎬 4,091 videos available\n📦 818 videos + 169 photos",M:"🔥 9,900+ new files added daily\n🎬 5,634 videos available\n📦 1,127 videos + 244 photos",L:"🔥 13,500+ new files added daily\n🎬 8,349 videos available\n📦 1,670 videos + 361 photos"}},
+  {id:12,name:"Pulse Pack",emoji:"💥",description:"Exclusive Pulse series",size_labels:{S:"🔥 6,900+ new files added daily\n🎬 3,647 videos available\n📦 729 videos + 145 photos",M:"🔥 9,200+ new files added daily\n🎬 5,241 videos available\n📦 1,048 videos + 211 photos",L:"🔥 12,700+ new files added daily\n🎬 7,784 videos available\n📦 1,557 videos + 335 photos"}},
+  {id:13,name:"Rogue Pack",emoji:"🎭",description:"Exclusive Rogue series",size_labels:{S:"🔥 7,400+ new files added daily\n🎬 3,924 videos available\n📦 785 videos + 163 photos",M:"🔥 9,700+ new files added daily\n🎬 5,512 videos available\n📦 1,102 videos + 232 photos",L:"🔥 13,400+ new files added daily\n🎬 8,278 videos available\n📦 1,656 videos + 352 photos"}},
+  {id:14,name:"Spectre Pack",emoji:"👁️",description:"Exclusive Spectre series",size_labels:{S:"🔥 7,600+ new files added daily\n🎬 4,047 videos available\n📦 809 videos + 171 photos",M:"🔥 9,600+ new files added daily\n🎬 5,483 videos available\n📦 1,097 videos + 237 photos",L:"🔥 13,300+ new files added daily\n🎬 8,191 videos available\n📦 1,638 videos + 356 photos"}},
+  {id:15,name:"Flux Pack",emoji:"⚗️",description:"Exclusive Flux series",size_labels:{S:"🔥 6,700+ new files added daily\n🎬 3,571 videos available\n📦 714 videos + 141 photos",M:"🔥 9,100+ new files added daily\n🎬 5,174 videos available\n📦 1,035 videos + 207 photos",L:"🔥 12,600+ new files added daily\n🎬 7,738 videos available\n📦 1,548 videos + 322 photos"}},
+  {id:16,name:"Zenith Pack",emoji:"🎯",description:"Exclusive Zenith series",size_labels:{S:"🔥 8,000+ new files added daily\n🎬 4,162 videos available\n📦 832 videos + 175 photos",M:"🔥 10,300+ new files added daily\n🎬 5,921 videos available\n📦 1,184 videos + 251 photos",L:"🔥 14,100+ new files added daily\n🎬 8,807 videos available\n📦 1,761 videos + 379 photos"}},
+  {id:17,name:"Apex Pack",emoji:"🏆",description:"Exclusive Apex series",size_labels:{S:"🔥 8,500+ new files added daily\n🎬 4,437 videos available\n📦 887 videos + 189 photos",M:"🔥 10,700+ new files added daily\n🎬 6,083 videos available\n📦 1,217 videos + 271 photos",L:"🔥 14,800+ new files added daily\n🎬 9,231 videos available\n📦 1,846 videos + 413 photos"}},
+  {id:18,name:"Void Pack",emoji:"🕳️",description:"Exclusive Void series",size_labels:{S:"🔥 6,500+ new files added daily\n🎬 3,451 videos available\n📦 690 videos + 137 photos",M:"🔥 8,900+ new files added daily\n🎬 5,037 videos available\n📦 1,007 videos + 201 photos",L:"🔥 12,300+ new files added daily\n🎬 7,561 videos available\n📦 1,512 videos + 314 photos"}},
+  {id:19,name:"Surge Pack",emoji:"🌪️",description:"Exclusive Surge series",size_labels:{S:"🔥 7,800+ new files added daily\n🎬 4,134 videos available\n📦 827 videos + 173 photos",M:"🔥 10,000+ new files added daily\n🎬 5,798 videos available\n📦 1,160 videos + 248 photos",L:"🔥 14,000+ new files added daily\n🎬 8,763 videos available\n📦 1,753 videos + 383 photos"}},
+  {id:20,name:"Prism Pack",emoji:"🔮",description:"Exclusive Prism series",size_labels:{S:"🔥 7,300+ new files added daily\n🎬 3,891 videos available\n📦 778 videos + 156 photos",M:"🔥 9,500+ new files added daily\n🎬 5,427 videos available\n📦 1,085 videos + 226 photos",L:"🔥 13,000+ new files added daily\n🎬 8,104 videos available\n📦 1,621 videos + 347 photos"}},
+];
+const DEMO_PRICES = {
+  S:{stars:1500,usdt:12.50},
+  M:{stars:2500,usdt:20.00},
+  L:{stars:5000,usdt:40.00},
+};
+
+// ── Init ────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch(`${API_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: tg.initData }),
+    });
+    if (!res.ok) throw new Error("API error");
+    const data = await res.json();
+    products = data.products;
+    prices = data.prices;
+    renderGrid(products);
+  } catch (e) {
+    // API unreachable — use demo data (browser preview / no backend yet)
+    products = DEMO_PRODUCTS;
+    prices = DEMO_PRICES;
+    renderGrid(products);
+  }
+}
+
+// ── Grid rendering ──────────────────────────────────────────────────────
+function renderGrid(list) {
+  const grid = document.getElementById("grid");
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div>No products found</div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map((p, i) => `
+    <div class="card" onclick="openSheet(${p.id})">
+      <div class="card-glow"></div>
+      ${i === 0 ? '<div class="card-badge">NEW</div>' : ""}
+      <span class="card-emoji">${p.emoji}</span>
+      <div class="card-name">${p.name}</div>
+      <div class="card-price">from ${prices.S?.usdt || "—"} USDT</div>
+      <button class="add-btn" onclick="event.stopPropagation(); openSheet(${p.id})">ADD</button>
+    </div>
+  `).join("");
+}
+
+// ── Sheet ───────────────────────────────────────────────────────────────
+function openSheet(productId) {
+  selectedProduct = products.find(p => p.id === productId);
+  if (!selectedProduct) return;
+  selectedSize = "M";
+  selectedMethod = "stars";
+
+  document.getElementById("sheetEmoji").textContent = selectedProduct.emoji;
+  document.getElementById("sheetTitle").textContent = selectedProduct.name;
+  document.getElementById("sheetDesc").textContent = selectedProduct.description;
+
+  renderSizes();
+  updateMethodAmounts();
+  updateBuyBtn();
+
+  showProductScreen();
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("sheet").classList.add("show");
+}
+
+function closeSheet() {
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("sheet").classList.remove("show");
+  clearTimer();
+}
+
+document.getElementById("overlay").addEventListener("click", closeSheet);
+
+function showProductScreen() {
+  document.getElementById("productScreen").classList.remove("hide");
+  document.getElementById("cryptoScreen").classList.remove("show");
+}
+
+function showCryptoScreen() {
+  document.getElementById("productScreen").classList.add("hide");
+  document.getElementById("cryptoScreen").classList.add("show");
+}
+
+// ── Sizes ───────────────────────────────────────────────────────────────
+function renderSizes() {
+  const sizes = ["S", "M", "L"];
+  const names = { S: "Small", M: "Medium", L: "Large" };
+  document.getElementById("sizes").innerHTML = sizes.map(s => `
+    <div class="size-card ${s === selectedSize ? "active" : ""}" onclick="selectSize('${s}')">
+      <div class="size-letter">${s}</div>
+      <div class="size-info">${selectedProduct.size_labels[s] || ""}</div>
+      <div class="size-price">⭐ ${prices[s]?.stars || "—"}</div>
+    </div>
+  `).join("");
+}
+
+function selectSize(s) {
+  selectedSize = s;
+  renderSizes();
+  updateMethodAmounts();
+  updateBuyBtn();
+}
+
+// ── Method ──────────────────────────────────────────────────────────────
+function selectMethod(m) {
+  if (m === "card") return;
+  selectedMethod = m;
+  document.querySelectorAll(".method-card[data-method]").forEach(el => {
+    el.classList.toggle("active", el.dataset.method === m);
+  });
+  updateBuyBtn();
+}
+
+function updateMethodAmounts() {
+  const p = prices[selectedSize] || {};
+  document.getElementById("starsAmt").textContent = p.stars ? `${p.stars} ⭐` : "—";
+  document.getElementById("usdtAmt").textContent = p.usdt ? `${p.usdt} USDT` : "—";
+}
+
+function updateBuyBtn() {
+  const btn = document.getElementById("buyBtn");
+  const p = prices[selectedSize] || {};
+  if (selectedMethod === "stars") {
+    btn.textContent = `Buy for ${p.stars || "—"} ⭐ Stars`;
+  } else {
+    btn.textContent = `Pay ${p.usdt || "—"} USDT`;
+  }
+}
+
+// ── Buy ──────────────────────────────────────────────────────────────────
+async function handleBuy() {
+  if (!selectedProduct) return;
+  if (selectedMethod === "stars") {
+    await handleStarsBuy();
+  } else if (selectedMethod === "usdt") {
+    await handleUsdtBuy();
+  }
+}
+
+async function handleStarsBuy() {
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = true;
+  btn.textContent = "Processing...";
+
+  try {
+    // Step 1: tell server to send invoice (BEFORE closing)
+    const res = await fetch(`${API_URL}/api/send-invoice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        init_data: tg.initData,
+        product_id: selectedProduct.id,
+        product_name: selectedProduct.name,
+        size: selectedSize,
+        stars: prices[selectedSize].stars,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Step 2: close AFTER server confirmed invoice was sent
+      tg.close();
+    } else {
+      btn.disabled = false;
+      updateBuyBtn();
+    }
+  } catch (e) {
+    btn.disabled = false;
+    updateBuyBtn();
+  }
+}
+
+async function handleUsdtBuy() {
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = true;
+  btn.textContent = "Generating address...";
+
+  try {
+    const res = await fetch(`${API_URL}/api/init-crypto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        init_data: tg.initData,
+        product_id: selectedProduct.id,
+        size: selectedSize,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      pendingId = data.pending_id;
+      cryptoWallet = data.wallet;
+      cryptoAmount = data.amount;
+      // Calculate expiry from NOW using timeout_minutes from server
+      expiresAt = Math.floor(Date.now() / 1000) + (data.timeout_minutes * 60);
+
+      document.getElementById("cryptoAmount").textContent = `${data.amount} USDT`;
+      document.getElementById("cryptoWallet").textContent = data.wallet;
+      document.getElementById("statusMsg").className = "status-msg";
+      document.getElementById("statusMsg").textContent = "";
+      document.getElementById("paidBtn").disabled = false;
+
+      showCryptoScreen();
+      startTimer();
+    }
+  } catch (e) {
+    btn.disabled = false;
+    updateBuyBtn();
+  }
+}
+
+// ── Crypto check ─────────────────────────────────────────────────────────
+async function checkPayment() {
+  const btn = document.getElementById("paidBtn");
+  const status = document.getElementById("statusMsg");
+
+  btn.disabled = true;
+  btn.textContent = "Checking blockchain...";
+  status.className = "status-msg loading";
+  status.textContent = "⏳ Searching for your transaction on the blockchain...";
+
+  try {
+    const res = await fetch(`${API_URL}/api/confirm-crypto-delivery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: tg.initData, pending_id: pendingId }),
+    });
+    const data = await res.json();
+
+    if (data.ok && data.confirmed) {
+      status.className = "status-msg success";
+      status.textContent = "✅ Payment confirmed! Your link has been sent to the chat.";
+      clearTimer();
+      setTimeout(() => tg.close(), 2500);
+    } else if (data.reason === "expired") {
+      status.className = "status-msg error";
+      status.textContent = "⏰ Payment window expired. Please start a new purchase.";
+    } else {
+      status.className = "status-msg error";
+      status.textContent = "❌ Payment not found yet. Make sure you sent the exact amount and try again in a minute.";
+      btn.disabled = false;
+      btn.textContent = "✅ I've Paid — Check Again";
+    }
+  } catch (e) {
+    status.className = "status-msg error";
+    status.textContent = "⚠️ Network error. Please try again.";
+    btn.disabled = false;
+    btn.textContent = "✅ I've Paid — Check Again";
+  }
+}
+
+function cancelCrypto() {
+  clearTimer();
+  showProductScreen();
+  const btn = document.getElementById("buyBtn");
+  btn.disabled = false;
+  updateBuyBtn();
+}
+
+// ── Timer ────────────────────────────────────────────────────────────────
+function startTimer() {
+  clearTimer();
+  timerInterval = setInterval(() => {
+    const remaining = expiresAt - Math.floor(Date.now() / 1000);
+    if (remaining <= 0) {
+      clearTimer();
+      document.getElementById("timerDisplay").textContent = "00:00";
+      document.getElementById("paidBtn").disabled = true;
+      document.getElementById("statusMsg").className = "status-msg error";
+      document.getElementById("statusMsg").textContent = "⏰ Payment window expired.";
+      return;
+    }
+    const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+    const s = String(remaining % 60).padStart(2, "0");
+    document.getElementById("timerDisplay").textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function clearTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ── Copy helpers ─────────────────────────────────────────────────────────
+function copyAmount() {
+  navigator.clipboard.writeText(String(cryptoAmount)).then(() => {
+    tg.showAlert("Amount copied!");
+  }).catch(() => {});
+}
+function copyWallet() {
+  navigator.clipboard.writeText(cryptoWallet).then(() => {
+    tg.showAlert("Wallet address copied!");
+  }).catch(() => {});
+}
+
+// ── Start ────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
