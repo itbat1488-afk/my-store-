@@ -429,7 +429,7 @@
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────
-const API_URL = "https://izola-snidest-outragedly.ngrok-free.dev";
+const API_URL = "https://your-vps-ip-or-domain.com"; // ← update this
 const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
   ready: () => {},
   expand: () => {},
@@ -633,17 +633,20 @@ async function handleStarsBuy() {
     });
     const data = await res.json();
     if (data.ok) {
-      // Close mini app — bot will send invoice
+      // Close mini app first, then bot sends invoice via /api/send-invoice
       tg.close();
-      // Bot listens for the close and sends invoice based on payload stored server-side
-      // Actually we need to send a message to bot via sendData
-      tg.sendData(JSON.stringify({
-        action: "buy_stars",
-        product_id: selectedProduct.id,
-        product_name: selectedProduct.name,
-        size: selectedSize,
-        stars: data.stars,
-      }));
+      // Also trigger invoice send via separate request
+      await fetch(`${API_URL}/api/send-invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          init_data: tg.initData,
+          product_id: selectedProduct.id,
+          product_name: selectedProduct.name,
+          size: selectedSize,
+          stars: data.stars,
+        }),
+      }).catch(() => {});
     }
   } catch (e) {
     btn.disabled = false;
@@ -739,8 +742,10 @@ function cancelCrypto() {
 // ── Timer ────────────────────────────────────────────────────────────────
 function startTimer() {
   clearTimer();
+  // expiresAt is Unix timestamp in seconds from server
+  const expiresSec = typeof expiresAt === "number" ? expiresAt : Math.floor(Date.now()/1000) + 1200;
   timerInterval = setInterval(() => {
-    const remaining = expiresAt - Math.floor(Date.now() / 1000);
+    const remaining = expiresSec - Math.floor(Date.now() / 1000);
     if (remaining <= 0) {
       clearTimer();
       document.getElementById("timerDisplay").textContent = "00:00";
