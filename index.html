@@ -429,7 +429,7 @@
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────
-const API_URL = "https://izola-snidest-outragedly.ngrok-free.dev";
+const API_URL = "https://your-vps-ip-or-domain.com"; // ← update this
 const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
   ready: () => {},
   expand: () => {},
@@ -622,31 +622,25 @@ async function handleStarsBuy() {
   btn.textContent = "Processing...";
 
   try {
-    const res = await fetch(`${API_URL}/api/pay-stars`, {
+    // Step 1: tell server to send invoice (BEFORE closing)
+    const res = await fetch(`${API_URL}/api/send-invoice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         init_data: tg.initData,
         product_id: selectedProduct.id,
+        product_name: selectedProduct.name,
         size: selectedSize,
+        stars: prices[selectedSize].stars,
       }),
     });
     const data = await res.json();
     if (data.ok) {
-      // Close mini app first, then bot sends invoice via /api/send-invoice
+      // Step 2: close AFTER server confirmed invoice was sent
       tg.close();
-      // Also trigger invoice send via separate request
-      await fetch(`${API_URL}/api/send-invoice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          init_data: tg.initData,
-          product_id: selectedProduct.id,
-          product_name: selectedProduct.name,
-          size: selectedSize,
-          stars: data.stars,
-        }),
-      }).catch(() => {});
+    } else {
+      btn.disabled = false;
+      updateBuyBtn();
     }
   } catch (e) {
     btn.disabled = false;
@@ -674,7 +668,8 @@ async function handleUsdtBuy() {
       pendingId = data.pending_id;
       cryptoWallet = data.wallet;
       cryptoAmount = data.amount;
-      expiresAt = data.expires_at;
+      // Calculate expiry from NOW using timeout_minutes from server
+      expiresAt = Math.floor(Date.now() / 1000) + (data.timeout_minutes * 60);
 
       document.getElementById("cryptoAmount").textContent = `${data.amount} USDT`;
       document.getElementById("cryptoWallet").textContent = data.wallet;
@@ -742,10 +737,8 @@ function cancelCrypto() {
 // ── Timer ────────────────────────────────────────────────────────────────
 function startTimer() {
   clearTimer();
-  // expiresAt is Unix timestamp in seconds from server
-  const expiresSec = typeof expiresAt === "number" ? expiresAt : Math.floor(Date.now()/1000) + 1200;
   timerInterval = setInterval(() => {
-    const remaining = expiresSec - Math.floor(Date.now() / 1000);
+    const remaining = expiresAt - Math.floor(Date.now() / 1000);
     if (remaining <= 0) {
       clearTimer();
       document.getElementById("timerDisplay").textContent = "00:00";
