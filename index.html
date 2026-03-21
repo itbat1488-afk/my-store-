@@ -122,7 +122,6 @@ function buyNow(){
     action: selMethod==='stars' ? 'pay_stars' : 'pay_crypto',
     size: selSize
   });
-  alert('DEBUG: sendData called, tg=' + (!!tg) + ', sendData=' + (!!tg?.sendData));
   if(tg && tg.sendData){
     tg.sendData(payload);
   }
