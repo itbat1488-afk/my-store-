@@ -16,18 +16,14 @@ button{width:100%;max-width:300px;padding:18px;font-size:18px;font-weight:700;bo
 <h2>Тест оплаты</h2>
 <button id="btn-stars" onclick="pay('stars')">⭐ Купить за 1 Star</button>
 <button id="btn-crypto" onclick="pay('crypto')">💎 Купить за 1 USDT</button>
-<div id="log" style="font-size:12px;color:#888;margin-top:20px"></div>
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-function log(msg){ document.getElementById('log').textContent = msg; }
-
 function pay(method){
-  const data = JSON.stringify({action: method==='stars'?'pay_stars':'pay_crypto', size:'small'});
-  log('Sending: ' + data);
-  tg.sendData(data);
+  tg.close();
+  tg.openTelegramLink('https://t.me/test_shop2134_bot?start=' + method + '_small');
 }
 </script>
 </body>
