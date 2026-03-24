@@ -2,132 +2,33 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Store</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;padding:16px}
-h1{font-size:22px;font-weight:800;margin-bottom:4px}
-.sub{font-size:13px;color:#555;margin-bottom:24px}
-.sizes{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
-.size-btn{background:#1e1e1e;border:2px solid #333;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s;text-align:left}
-.size-btn.active{border-color:#f5a623;background:rgba(245,166,35,0.08)}
-.size-badge{width:36px;height:36px;border-radius:8px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
-.size-btn.active .size-badge{background:#f5a623;color:#000}
-.size-info{flex:1}
-.size-label{font-size:14px;font-weight:600}
-.size-price{font-size:12px;color:#888;margin-top:2px}
-.size-btn.active .size-price{color:#f5a623;font-weight:600}
-.methods{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
-.method{background:#1e1e1e;border:2px solid #333;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
-.method.active{border-color:#f5a623;background:rgba(245,166,35,0.08)}
-.method.dim{opacity:0.4;cursor:not-allowed}
-.method-icon{font-size:22px}
-.method-info{flex:1}
-.method-name{font-size:14px;font-weight:600}
-.method-sub{font-size:11px;color:#555;margin-top:1px}
-.method-amt{font-size:15px;font-weight:700;color:#f5a623}
-.radio{width:20px;height:20px;border:2px solid #333;border-radius:50%}
-.method.active .radio{border-color:#f5a623;background:#f5a623;box-shadow:inset 0 0 0 3px #1e1e1e}
-.sec{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-.buy-btn{width:100%;background:#f5a623;color:#000;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:800;cursor:pointer}
-.buy-btn:active{background:#e09400}
-.buy-btn:disabled{background:#262626;color:#555;pointer-events:none}
+body{margin:0;padding:40px 20px;background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;gap:20px}
+button{width:100%;max-width:300px;padding:18px;font-size:18px;font-weight:700;border:none;border-radius:12px;cursor:pointer}
+#btn-stars{background:#f5a623;color:#000}
+#btn-crypto{background:#3b82f6;color:#fff}
 </style>
 </head>
 <body>
-
-<h1>🔥 Test Pack</h1>
-<p class="sub">Тестовый продукт — выберите размер и оплатите</p>
-
-<div class="sec">Выберите архив</div>
-<div class="sizes" id="sizes"></div>
-
-<div class="sec">Способ оплаты</div>
-<div class="methods" id="methods"></div>
-
-<button class="buy-btn" id="buy-btn" onclick="buyNow()">Купить</button>
-
+<h2>Тест оплаты</h2>
+<button id="btn-stars" onclick="pay('stars')">⭐ Купить за 1 Star</button>
+<button id="btn-crypto" onclick="pay('crypto')">💎 Купить за 1 USDT</button>
+<div id="log" style="font-size:12px;color:#888;margin-top:20px"></div>
 <script>
-const tg = window.Telegram?.WebApp;
-if(tg){ tg.ready(); tg.expand(); }
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
-const SIZES = [
-  { key:'small',  badge:'S', label:'📦 703 videos + 477 photos',  stars:1, usdt:1 },
-  { key:'medium', badge:'M', label:'🎬 2628 videos available',     stars:2, usdt:2 },
-  { key:'large',  badge:'L', label:'🔥 5000+ new files daily',    stars:3, usdt:3 },
-];
-const METHODS = [
-  { key:'stars',  icon:'⭐', name:'Telegram Stars', sub:'Мгновенно' },
-  { key:'crypto', icon:'💎', name:'USDT (TRC-20)',  sub:'По реквизитам' },
-  { key:'card',   icon:'💳', name:'Банковская карта', sub:'Скоро', disabled:true },
-];
+function log(msg){ document.getElementById('log').textContent = msg; }
 
-let selSize = 'small';
-let selMethod = 'stars';
-
-function renderSizes(){
-  const c = document.getElementById('sizes');
-  c.innerHTML = '';
-  SIZES.forEach(s => {
-    const d = document.createElement('div');
-    d.className = 'size-btn' + (s.key===selSize?' active':'');
-    d.onclick = () => { selSize=s.key; render(); };
-    d.innerHTML =
-      '<div class="size-badge">'+s.badge+'</div>'+
-      '<div class="size-info">'+
-        '<div class="size-label">'+s.label+'</div>'+
-        '<div class="size-price">⭐ '+s.stars+' Stars &nbsp;|&nbsp; '+s.usdt+' USDT</div>'+
-      '</div>';
-    c.appendChild(d);
-  });
+function pay(method){
+  const data = JSON.stringify({action: method==='stars'?'pay_stars':'pay_crypto', size:'small'});
+  log('Sending: ' + data);
+  tg.sendData(data);
 }
-
-function renderMethods(){
-  const c = document.getElementById('methods');
-  c.innerHTML = '';
-  const sz = SIZES.find(s=>s.key===selSize);
-  METHODS.forEach(m => {
-    const active = m.key===selMethod;
-    const amt = m.key==='stars' ? sz.stars+' ⭐' : m.key==='crypto' ? sz.usdt+' USDT' : 'скоро';
-    const d = document.createElement('div');
-    d.className = 'method'+(active?' active':'')+(m.disabled?' dim':'');
-    if(!m.disabled) d.onclick = () => { selMethod=m.key; render(); };
-    d.innerHTML =
-      '<div class="method-icon">'+m.icon+'</div>'+
-      '<div class="method-info">'+
-        '<div class="method-name">'+m.name+'</div>'+
-        '<div class="method-sub">'+m.sub+'</div>'+
-      '</div>'+
-      '<div class="method-amt">'+amt+'</div>'+
-      '<div class="radio"></div>';
-    c.appendChild(d);
-  });
-}
-
-function renderBtn(){
-  const btn = document.getElementById('buy-btn');
-  const sz = SIZES.find(s=>s.key===selSize);
-  if(selMethod==='stars') btn.textContent = 'Купить за '+sz.stars+' ⭐ Stars';
-  else if(selMethod==='crypto') btn.textContent = 'Оплатить '+sz.usdt+' USDT';
-  else { btn.textContent = 'Скоро'; btn.disabled=true; return; }
-  btn.disabled = false;
-}
-
-function render(){ renderSizes(); renderMethods(); renderBtn(); }
-
-function buyNow(){
-  const payload = JSON.stringify({
-    action: selMethod==='stars' ? 'pay_stars' : 'pay_crypto',
-    size: selSize
-  });
-  if(tg && tg.sendData){
-    tg.sendData(payload);
-  }
-}
-
-render();
 </script>
 </body>
 </html>
