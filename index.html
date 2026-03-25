@@ -173,8 +173,7 @@ function buyNow(){
   const cmd=selPay+'_'+cur.id+'_'+selSize;
   const url='https://t.me/'+BOT+'?start='+cmd;
   if(tg&&tg.openTelegramLink){
-    tg.close();
-    setTimeout(function(){ tg.openTelegramLink(url); }, 300);
+    tg.openTelegramLink(url);
   } else {
     window.open(url,'_blank');
   }
