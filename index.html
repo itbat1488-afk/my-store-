@@ -1,39 +1,4 @@
-"""
-Запускай после изменения .env:
-    python generate_html.py
-Создаст miniapp/index.html с актуальными товарами.
-"""
-import os, json, pathlib
-from dotenv import load_dotenv
-load_dotenv()
-
-BOT = os.getenv("BOT_USERNAME", "your_bot")
-PS  = int(os.getenv("PRICE_S_STARS", "1500"))
-PU_S = float(os.getenv("PRICE_S_USDT", "15"))
-PM  = int(os.getenv("PRICE_M_STARS", "2500"))
-PU_M = float(os.getenv("PRICE_M_USDT", "25"))
-PL  = int(os.getenv("PRICE_L_STARS", "5000"))
-PU_L = float(os.getenv("PRICE_L_USDT", "50"))
-
-products = []
-for n in range(1, 21):
-    name = os.getenv(f"PRODUCT_{n}_NAME", "").strip()
-    if not name:
-        continue
-    products.append({
-        "id": f"p{n}",
-        "name": name,
-        "desc": os.getenv(f"PRODUCT_{n}_DESC", name),
-        "emoji": os.getenv(f"PRODUCT_{n}_EMOJI", "📦"),
-        "isNew": os.getenv(f"PRODUCT_{n}_NEW", "false").lower() == "true",
-        "s": os.getenv(f"PRODUCT_{n}_S", "703 videos + 477 photos"),
-        "m": os.getenv(f"PRODUCT_{n}_M", "2628 videos available"),
-        "l": os.getenv(f"PRODUCT_{n}_L", "5000+ new files daily"),
-    })
-
-pjs = json.dumps(products, ensure_ascii=False)
-
-html = f"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -41,54 +6,54 @@ html = f"""<!DOCTYPE html>
 <title>Exclusive Store</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-*{{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
-body{{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}}
-::-webkit-scrollbar{{display:none}}
-.header{{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 16px 10px}}
-.header-title{{font-size:20px;font-weight:700}}
-.header-sub{{font-size:12px;color:#555;margin-top:2px}}
-.grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}}
-.card{{background:#1e1e1e;border-radius:16px;padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(255,255,255,0.08);position:relative}}
-.card-header{{display:flex;align-items:flex-start;gap:10px}}
-.card-emoji{{font-size:28px;line-height:1;flex-shrink:0}}
-.card-name{{font-size:14px;font-weight:700;line-height:1.3}}
-.card-from{{font-size:11px;color:#555;margin-top:3px}}
-.new-badge{{position:absolute;top:10px;right:10px;background:#30d158;color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase}}
-.add-btn{{background:#f5a623;color:#000;border:none;border-radius:8px;width:100%;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer}}
-.add-btn:active{{background:#e09400}}
-.overlay{{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s}}
-.overlay.open{{opacity:1;pointer-events:all}}
-.sheet{{position:fixed;bottom:0;left:0;right:0;z-index:301;background:#141414;border-radius:24px 24px 0 0;padding:0 0 44px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:90vh;overflow-y:auto}}
-.sheet.open{{transform:translateY(0)}}
-.sheet-handle{{width:36px;height:4px;background:rgba(255,255,255,0.18);border-radius:2px;margin:12px auto 0}}
-.prod-info{{padding:20px 20px 0}}
-.prod-title{{font-size:22px;font-weight:800;margin-bottom:6px}}
-.prod-desc{{font-size:14px;color:#a0a0a0;line-height:1.6}}
-.sec{{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;padding:20px 20px 10px}}
-.size-list{{display:flex;flex-direction:column;gap:8px;padding:0 20px}}
-.size-row{{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}}
-.size-row.active{{border-color:#f5a623;background:rgba(245,166,35,0.06)}}
-.sz-badge{{width:36px;height:36px;border-radius:8px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0}}
-.size-row.active .sz-badge{{background:#f5a623;color:#000}}
-.sz-info{{flex:1}}
-.sz-label{{font-size:14px;font-weight:600}}
-.sz-prices{{display:flex;gap:8px;font-size:12px;color:#888;margin-top:2px}}
-.size-row.active .sz-prices{{color:#f5a623;font-weight:600}}
-.pay-list{{display:flex;flex-direction:column;gap:8px;padding:0 20px}}
-.pay-row{{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}}
-.pay-row.active{{border-color:#f5a623;background:rgba(245,166,35,0.06)}}
-.pay-row.dim{{opacity:0.38;cursor:not-allowed}}
-.pay-icon{{font-size:22px;flex-shrink:0}}
-.pay-info{{flex:1}}
-.pay-name{{font-size:14px;font-weight:600}}
-.pay-sub{{font-size:11px;color:#555;margin-top:1px}}
-.pay-amt{{font-size:15px;font-weight:700;color:#f5a623;white-space:nowrap}}
-.pay-radio{{width:20px;height:20px;border:2px solid rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;transition:all .2s}}
-.pay-row.active .pay-radio{{border-color:#f5a623;background:#f5a623;box-shadow:inset 0 0 0 3px #1e1e1e}}
-.cta-wrap{{padding:20px 20px 0}}
-.cta-btn{{width:100%;background:#f5a623;color:#000;border:none;border-radius:10px;padding:16px;font-size:16px;font-weight:800;cursor:pointer}}
-.cta-btn:active{{background:#e09400}}
-.cta-btn:disabled{{background:#262626;color:#555;pointer-events:none}}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+::-webkit-scrollbar{display:none}
+.header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 16px 10px}
+.header-title{font-size:20px;font-weight:700}
+.header-sub{font-size:12px;color:#555;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+.card{background:#1e1e1e;border-radius:16px;padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(255,255,255,0.08);position:relative}
+.card-header{display:flex;align-items:flex-start;gap:10px}
+.card-emoji{font-size:28px;line-height:1;flex-shrink:0}
+.card-name{font-size:14px;font-weight:700;line-height:1.3}
+.card-from{font-size:11px;color:#555;margin-top:3px}
+.new-badge{position:absolute;top:10px;right:10px;background:#30d158;color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase}
+.add-btn{background:#f5a623;color:#000;border:none;border-radius:8px;width:100%;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer}
+.add-btn:active{background:#e09400}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{position:fixed;bottom:0;left:0;right:0;z-index:301;background:#141414;border-radius:24px 24px 0 0;padding:0 0 44px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:90vh;overflow-y:auto}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;background:rgba(255,255,255,0.18);border-radius:2px;margin:12px auto 0}
+.prod-info{padding:20px 20px 0}
+.prod-title{font-size:22px;font-weight:800;margin-bottom:6px}
+.prod-desc{font-size:14px;color:#a0a0a0;line-height:1.6}
+.sec{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;padding:20px 20px 10px}
+.size-list{display:flex;flex-direction:column;gap:8px;padding:0 20px}
+.size-row{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.size-row.active{border-color:#f5a623;background:rgba(245,166,35,0.06)}
+.sz-badge{width:36px;height:36px;border-radius:8px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0}
+.size-row.active .sz-badge{background:#f5a623;color:#000}
+.sz-info{flex:1}
+.sz-label{font-size:14px;font-weight:600}
+.sz-prices{display:flex;gap:8px;font-size:12px;color:#888;margin-top:2px}
+.size-row.active .sz-prices{color:#f5a623;font-weight:600}
+.pay-list{display:flex;flex-direction:column;gap:8px;padding:0 20px}
+.pay-row{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.pay-row.active{border-color:#f5a623;background:rgba(245,166,35,0.06)}
+.pay-row.dim{opacity:0.38;cursor:not-allowed}
+.pay-icon{font-size:22px;flex-shrink:0}
+.pay-info{flex:1}
+.pay-name{font-size:14px;font-weight:600}
+.pay-sub{font-size:11px;color:#555;margin-top:1px}
+.pay-amt{font-size:15px;font-weight:700;color:#f5a623;white-space:nowrap}
+.pay-radio{width:20px;height:20px;border:2px solid rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;transition:all .2s}
+.pay-row.active .pay-radio{border-color:#f5a623;background:#f5a623;box-shadow:inset 0 0 0 3px #1e1e1e}
+.cta-wrap{padding:20px 20px 0}
+.cta-btn{width:100%;background:#f5a623;color:#000;border:none;border-radius:10px;padding:16px;font-size:16px;font-weight:800;cursor:pointer}
+.cta-btn:active{background:#e09400}
+.cta-btn:disabled{background:#262626;color:#555;pointer-events:none}
 </style>
 </head>
 <body>
@@ -114,37 +79,37 @@ body{{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont
 </div>
 <script>
 const tg=window.Telegram?.WebApp;
-if(tg){{tg.ready();tg.expand();}}
-const BOT='{BOT}';
-const PRODUCTS={pjs};
+if(tg){tg.ready();tg.expand();}
+const BOT='test_shop2134_bot';
+const PRODUCTS=[{"id": "p1", "name": "Alpha Pack", "desc": "Эксклюзивная Alpha коллекция", "emoji": "🔥", "isNew": true, "s": "703 videos + 477 photos", "m": "2628 videos available", "l": "5000+ new files daily"}, {"id": "p2", "name": "Beta Pack", "desc": "Премиум Beta выпуск", "emoji": "💎", "isNew": false, "s": "721 videos + 491 photos", "m": "2701 videos available", "l": "5100+ new files daily"}, {"id": "p3", "name": "Gamma Pack", "desc": "Лимитированный Gamma выпуск", "emoji": "⚡", "isNew": false, "s": "689 videos + 463 photos", "m": "2589 videos available", "l": "4900+ new files daily"}, {"id": "p4", "name": "Delta Pack", "desc": "Архивная Delta коллекция", "emoji": "🎁", "isNew": false, "s": "744 videos + 512 photos", "m": "2744 videos available", "l": "5200+ new files daily"}, {"id": "p5", "name": "Sigma Pack", "desc": "Ultra Premium Sigma эксклюзив", "emoji": "👑", "isNew": false, "s": "668 videos + 448 photos", "m": "2512 videos available", "l": "4800+ new files daily"}, {"id": "p6", "name": "Omega Pack", "desc": "Финальная Omega коллекция", "emoji": "🌟", "isNew": false, "s": "756 videos + 523 photos", "m": "2812 videos available", "l": "5300+ new files daily"}, {"id": "p7", "name": "Zeta Pack", "desc": "Zeta серия — свежий контент", "emoji": "🎯", "isNew": false, "s": "712 videos + 468 photos", "m": "2656 videos available", "l": "5050+ new files daily"}, {"id": "p8", "name": "Eta Pack", "desc": "Eta коллекция — отборный материал", "emoji": "💫", "isNew": false, "s": "698 videos + 452 photos", "m": "2598 videos available", "l": "4950+ new files daily"}, {"id": "p9", "name": "Theta Pack", "desc": "Theta выпуск — премиум архив", "emoji": "🔮", "isNew": false, "s": "731 videos + 499 photos", "m": "2731 videos available", "l": "5150+ new files daily"}, {"id": "p10", "name": "Iota Pack", "desc": "Iota архив — лимитированный выпуск", "emoji": "🏆", "isNew": false, "s": "677 videos + 441 photos", "m": "2544 videos available", "l": "4850+ new files daily"}, {"id": "p11", "name": "Kappa Pack", "desc": "Kappa эксклюзив — топ качество", "emoji": "💥", "isNew": false, "s": "748 videos + 516 photos", "m": "2768 videos available", "l": "5250+ new files daily"}, {"id": "p12", "name": "Lambda Pack", "desc": "Lambda коллекция — редкие материалы", "emoji": "🎪", "isNew": false, "s": "715 videos + 472 photos", "m": "2672 videos available", "l": "5080+ new files daily"}, {"id": "p13", "name": "Mu Pack", "desc": "Mu серия — полная коллекция", "emoji": "🎭", "isNew": false, "s": "693 videos + 456 photos", "m": "2612 videos available", "l": "4920+ new files daily"}, {"id": "p14", "name": "Nu Pack", "desc": "Nu архив — эксклюзивный контент", "emoji": "🌈", "isNew": false, "s": "739 videos + 507 photos", "m": "2756 videos available", "l": "5180+ new files daily"}, {"id": "p15", "name": "Xi Pack", "desc": "Xi выпуск — лимитированная серия", "emoji": "🎸", "isNew": false, "s": "704 videos + 461 photos", "m": "2634 videos available", "l": "5020+ new files daily"}, {"id": "p16", "name": "Omicron Pack", "desc": "Omicron коллекция — свежий архив", "emoji": "🎬", "isNew": false, "s": "726 videos + 488 photos", "m": "2712 videos available", "l": "5120+ new files daily"}, {"id": "p17", "name": "Pi Pack", "desc": "Pi серия — премиум контент", "emoji": "🎵", "isNew": false, "s": "685 videos + 445 photos", "m": "2567 videos available", "l": "4870+ new files daily"}, {"id": "p18", "name": "Rho Pack", "desc": "Rho архив — отборная коллекция", "emoji": "🎨", "isNew": false, "s": "752 videos + 519 photos", "m": "2789 videos available", "l": "5280+ new files daily"}, {"id": "p19", "name": "Tau Pack", "desc": "Tau выпуск — топ качество", "emoji": "🏅", "isNew": false, "s": "708 videos + 465 photos", "m": "2645 videos available", "l": "5030+ new files daily"}, {"id": "p20", "name": "Upsilon Pack", "desc": "Upsilon коллекция — финальный архив", "emoji": "💯", "isNew": false, "s": "735 videos + 503 photos", "m": "2748 videos available", "l": "5190+ new files daily"}];
 const SIZES=[
-  {{key:'s',badge:'S',prices:{{stars:{PS},usdt:{PU_S}}}}},
-  {{key:'m',badge:'M',prices:{{stars:{PM},usdt:{PU_M}}}}},
-  {{key:'l',badge:'L',prices:{{stars:{PL},usdt:{PU_L}}}}},
+  {key:'s',badge:'S',prices:{stars:1500,usdt:15.0}},
+  {key:'m',badge:'M',prices:{stars:2500,usdt:25.0}},
+  {key:'l',badge:'L',prices:{stars:5000,usdt:50.0}},
 ];
 const PAYS=[
-  {{key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Мгновенно'}},
-  {{key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'По реквизитам'}},
-  {{key:'card',icon:'💳',name:'Банковская карта',sub:'Скоро',dim:true}},
+  {key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Мгновенно'},
+  {key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'По реквизитам'},
+  {key:'card',icon:'💳',name:'Банковская карта',sub:'Скоро',dim:true},
 ];
 let cur=null,selSize='s',selPay='stars';
 
-function renderGrid(){{
+function renderGrid(){
   const g=document.getElementById('grid');
   g.innerHTML='';
-  PRODUCTS.forEach(p=>{{
+  PRODUCTS.forEach(p=>{
     const d=document.createElement('div');
     d.className='card';
     d.innerHTML=(p.isNew?'<div class="new-badge">NEW</div>':'')+
       '<div class="card-header"><div class="card-emoji">'+p.emoji+'</div>'+
       '<div><div class="card-name">'+p.name+'</div>'+
-      '<div class="card-from">от {PU_S} USDT</div></div></div>'+
-      '<button class="add-btn" onclick="open_product(\\''+p.id+'\\',event)">ADD</button>';
+      '<div class="card-from">от 15.0 USDT</div></div></div>'+
+      '<button class="add-btn" onclick="open_product(\''+p.id+'\',event)">ADD</button>';
     g.appendChild(d);
-  }});
-}}
+  });
+}
 
-function open_product(id,e){{
+function open_product(id,e){
   e&&e.stopPropagation();
   cur=PRODUCTS.find(p=>p.id===id);
   if(!cur)return;
@@ -153,71 +118,64 @@ function open_product(id,e){{
   renderSizes();renderPays();updateCTA();
   document.getElementById('overlay').classList.add('open');
   document.getElementById('sheet').classList.add('open');
-}}
+}
 
-function closeSheet(){{
+function closeSheet(){
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('sheet').classList.remove('open');
-}}
+}
 
-function renderSizes(){{
+function renderSizes(){
   const c=document.getElementById('size-list');
   c.innerHTML='';
-  SIZES.forEach(s=>{{
+  SIZES.forEach(s=>{
     const active=s.key===selSize;
     const label=cur[s.key];
     const d=document.createElement('div');
     d.className='size-row'+(active?' active':'');
-    d.onclick=()=>{{selSize=s.key;renderSizes();renderPays();updateCTA();}};
+    d.onclick=()=>{selSize=s.key;renderSizes();renderPays();updateCTA();};
     d.innerHTML='<div class="sz-badge">'+s.badge+'</div>'+
       '<div class="sz-info"><div class="sz-label">'+label+'</div>'+
       '<div class="sz-prices">⭐'+s.prices.stars+' &nbsp;|&nbsp; '+s.prices.usdt+'$</div></div>';
     c.appendChild(d);
-  }});
-}}
+  });
+}
 
-function renderPays(){{
+function renderPays(){
   const c=document.getElementById('pay-list');
   c.innerHTML='';
   const sz=SIZES.find(s=>s.key===selSize);
-  PAYS.forEach(m=>{{
+  PAYS.forEach(m=>{
     const active=m.key===selPay;
     const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?sz.prices.usdt+' USDT':'скоро';
     const d=document.createElement('div');
     d.className='pay-row'+(active?' active':'')+(m.dim?' dim':'');
-    if(!m.dim)d.onclick=()=>{{selPay=m.key;renderPays();updateCTA();}};
+    if(!m.dim)d.onclick=()=>{selPay=m.key;renderPays();updateCTA();};
     d.innerHTML='<div class="pay-icon">'+m.icon+'</div>'+
       '<div class="pay-info"><div class="pay-name">'+m.name+'</div>'+
       '<div class="pay-sub">'+m.sub+'</div></div>'+
       '<div class="pay-amt">'+amt+'</div>'+
       '<div class="pay-radio"></div>';
     c.appendChild(d);
-  }});
-}}
+  });
+}
 
-function updateCTA(){{
+function updateCTA(){
   const btn=document.getElementById('cta-btn');
   const sz=SIZES.find(s=>s.key===selSize);
-  if(selPay==='stars'){{btn.textContent='Купить за '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}}
-  else if(selPay==='crypto'){{btn.textContent='Оплатить '+sz.prices.usdt+' USDT';btn.disabled=false;}}
-  else{{btn.textContent='Скоро';btn.disabled=true;}}
-}}
+  if(selPay==='stars'){btn.textContent='Купить за '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}
+  else if(selPay==='crypto'){btn.textContent='Оплатить '+sz.prices.usdt+' USDT';btn.disabled=false;}
+  else{btn.textContent='Скоро';btn.disabled=true;}
+}
 
-function buyNow(){{
+function buyNow(){
   if(!cur)return;
   const cmd=selPay+'_'+cur.id+'_'+selSize;
   if(tg&&tg.openTelegramLink)tg.openTelegramLink('https://t.me/'+BOT+'?start='+cmd);
   else window.open('https://t.me/'+BOT+'?start='+cmd,'_blank');
-}}
+}
 
 renderGrid();
 </script>
 </body>
-</html>"""
-
-out = pathlib.Path(__file__).parent.parent / "miniapp" / "index.html"
-out.parent.mkdir(exist_ok=True)
-out.write_text(html, encoding="utf-8")
-print(f"Готово! Товаров: {len(products)}")
-print(f"Файл: {out}")
-print("Залей index.html на GitHub!")
+</html>
