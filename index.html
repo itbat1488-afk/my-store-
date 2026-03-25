@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,8 +7,34 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;overflow-x:hidden}
 ::-webkit-scrollbar{display:none}
+
+/* WELCOME PAGE */
+.welcome{position:fixed;inset:0;background:#0a0a0a;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 20px 100px;text-align:center;overflow-y:auto}
+.welcome.hidden{display:none}
+.welcome-emoji{font-size:72px;margin-bottom:24px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.welcome-title{font-size:26px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px}
+.welcome-title span{color:#f5a623}
+.welcome-sub{font-size:14px;color:#666;margin-bottom:32px;letter-spacing:0.5px;text-transform:uppercase}
+.welcome-card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;margin-bottom:32px;text-align:left;width:100%;max-width:380px}
+.welcome-card-title{font-size:13px;font-weight:700;color:#f5a623;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.welcome-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.welcome-step:last-child{margin-bottom:0}
+.step-num{width:28px;height:28px;border-radius:50%;background:#f5a623;color:#000;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-text{font-size:14px;color:#ccc;line-height:1.5;padding-top:4px}
+.step-text b{color:#fff}
+.welcome-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;width:100%;max-width:380px}
+.stat-card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 10px;text-align:center}
+.stat-num{font-size:20px;font-weight:800;color:#f5a623}
+.stat-label{font-size:10px;color:#555;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px}
+.next-btn{background:#f5a623;color:#000;border:none;border-radius:14px;padding:18px 48px;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:transform .15s,background .15s;width:calc(100% - 40px);max-width:380px;position:fixed;bottom:24px;left:50%;transform:translateX(-50%)}
+.next-btn:active{background:#e09400}
+
+/* STORE */
+.store{display:none}
+.store.visible{display:block}
 .header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 16px 10px}
 .header-title{font-size:20px;font-weight:700}
 .header-sub{font-size:12px;color:#555;margin-top:2px}
@@ -57,11 +83,60 @@ body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-title">🛍 Exclusive Store</div>
-  <div class="header-sub">Эксклюзивный контент</div>
+
+<!-- WELCOME PAGE -->
+<div class="welcome" id="welcome">
+  <div class="welcome-emoji">👋</div>
+  <div class="welcome-title">Welcome to the<br><span>EXCLUSIVE ARCHIVE</span></div>
+  <div class="welcome-sub">Premium Content Store</div>
+
+  <div class="welcome-stats">
+    <div class="stat-card">
+      <div class="stat-num">20+</div>
+      <div class="stat-label">Collections</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">5K+</div>
+      <div class="stat-label">Files</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">Daily</div>
+      <div class="stat-label">Updates</div>
+    </div>
+  </div>
+
+  <div class="welcome-card">
+    <div class="welcome-card-title">📖 How it works</div>
+    <div class="welcome-step">
+      <div class="step-num">1</div>
+      <div class="step-text"><b>Browse the catalog</b> — choose from 20+ exclusive content collections</div>
+    </div>
+    <div class="welcome-step">
+      <div class="step-num">2</div>
+      <div class="step-text"><b>Select archive size</b> — S, M or L depending on how much content you want</div>
+    </div>
+    <div class="welcome-step">
+      <div class="step-num">3</div>
+      <div class="step-text"><b>Choose payment</b> — Telegram Stars (instant) or USDT crypto</div>
+    </div>
+    <div class="welcome-step">
+      <div class="step-num">4</div>
+      <div class="step-text"><b>Get your link</b> — download link is sent automatically after payment</div>
+    </div>
+  </div>
+
 </div>
-<div id="grid" class="grid"></div>
+<button class="next-btn" id="next-btn" onclick="showStore()">NEXT →</button>
+
+<!-- STORE -->
+<div class="store" id="store">
+  <div class="header">
+    <div class="header-title">🛍 Exclusive Store</div>
+    <div class="header-sub">Premium exclusive content</div>
+  </div>
+  <div id="grid" class="grid"></div>
+</div>
+
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
@@ -69,30 +144,38 @@ body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div class="prod-title" id="s-title"></div>
     <div class="prod-desc" id="s-desc"></div>
   </div>
-  <div class="sec">Выберите архив</div>
+  <div class="sec">Select archive size</div>
   <div class="size-list" id="size-list"></div>
-  <div class="sec">Способ оплаты</div>
+  <div class="sec">Payment method</div>
   <div class="pay-list" id="pay-list"></div>
   <div class="cta-wrap">
-    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Buy</button>
   </div>
 </div>
+
 <script>
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 const BOT='test_shop2134_bot';
-const PRODUCTS=[{"id": "p1", "name": "IPcams", "desc": "Эксклюзивная Alpha коллекция", "emoji": "", "isNew": true, "s": "703 videos + 477 photos", "m": "2628 videos available", "l": "5000+ new files daily"}, {"id": "p2", "name": "MomSon", "desc": "Премиум Beta выпуск", "emoji": "💎", "isNew": false, "s": "721 videos + 491 photos", "m": "2701 videos available", "l": "5100+ new files daily"}, {"id": "p3", "name": "Milf", "desc": "Лимитированный Gamma выпуск", "emoji": "⚡", "isNew": false, "s": "689 videos + 463 photos", "m": "2589 videos available", "l": "4900+ new files daily"}, {"id": "p4", "name": "Teens", "desc": "Архивная Delta коллекция", "emoji": "🎁", "isNew": false, "s": "744 videos + 512 photos", "m": "2744 videos available", "l": "5200+ new files daily"}, {"id": "p5", "name": "Young", "desc": "Ultra Premium Sigma эксклюзив", "emoji": "👑", "isNew": false, "s": "668 videos + 448 photos", "m": "2512 videos available", "l": "4800+ new files daily"}, {"id": "p6", "name": "CP", "desc": "Финальная Omega коллекция", "emoji": "🌟", "isNew": false, "s": "756 videos + 523 photos", "m": "2812 videos available", "l": "5300+ new files daily"}, {"id": "p7", "name": "Amateur", "desc": "Zeta серия — свежий контент", "emoji": "🎯", "isNew": false, "s": "712 videos + 468 photos", "m": "2656 videos available", "l": "5050+ new files daily"}, {"id": "p8", "name": "Gay", "desc": "Eta коллекция — отборный материал", "emoji": "💫", "isNew": false, "s": "698 videos + 452 photos", "m": "2598 videos available", "l": "4950+ new files daily"}, {"id": "p9", "name": "Leaks", "desc": "Theta выпуск — премиум архив", "emoji": "🔮", "isNew": false, "s": "731 videos + 499 photos", "m": "2731 videos available", "l": "5150+ new files daily"}, {"id": "p10", "name": "Petite", "desc": "Iota архив — лимитированный выпуск", "emoji": "🏆", "isNew": false, "s": "677 videos + 441 photos", "m": "2544 videos available", "l": "4850+ new files daily"}, {"id": "p11", "name": "Public", "desc": "Kappa эксклюзив — топ качество", "emoji": "💥", "isNew": false, "s": "748 videos + 516 photos", "m": "2768 videos available", "l": "5250+ new files daily"}, {"id": "p12", "name": "Feets", "desc": "Lambda коллекция — редкие материалы", "emoji": "🎪", "isNew": false, "s": "715 videos + 472 photos", "m": "2672 videos available", "l": "5080+ new files daily"}, {"id": "p13", "name": "Underage", "desc": "Mu серия — полная коллекция", "emoji": "🎭", "isNew": false, "s": "693 videos + 456 photos", "m": "2612 videos available", "l": "4920+ new files daily"}, {"id": "p14", "name": "Nu Pack", "desc": "Nu архив — эксклюзивный контент", "emoji": "🌈", "isNew": false, "s": "739 videos + 507 photos", "m": "2756 videos available", "l": "5180+ new files daily"}, {"id": "p15", "name": "Solo", "desc": "Xi выпуск — лимитированная серия", "emoji": "🎸", "isNew": false, "s": "704 videos + 461 photos", "m": "2634 videos available", "l": "5020+ new files daily"}, {"id": "p16", "name": "Family cctv", "desc": "Omicron коллекция — свежий архив", "emoji": "🎬", "isNew": false, "s": "726 videos + 488 photos", "m": "2712 videos available", "l": "5120+ new files daily"}, {"id": "p17", "name": "Homemade", "desc": "Pi серия — премиум контент", "emoji": "🎵", "isNew": false, "s": "685 videos + 445 photos", "m": "2567 videos available", "l": "4870+ new files daily"}, {"id": "p18", "name": "Asian", "desc": "Rho архив — отборная коллекция", "emoji": "🎨", "isNew": false, "s": "752 videos + 519 photos", "m": "2789 videos available", "l": "5280+ new files daily"}, {"id": "p19", "name": "Hard", "desc": "Tau выпуск — топ качество", "emoji": "🏅", "isNew": false, "s": "708 videos + 465 photos", "m": "2645 videos available", "l": "5030+ new files daily"}, {"id": "p20", "name": "Lesbians", "desc": "Upsilon коллекция — финальный архив", "emoji": "💯", "isNew": false, "s": "735 videos + 503 photos", "m": "2748 videos available", "l": "5190+ new files daily"}];
+const PRODUCTS=[{"id":"p1","name":"Alpha Pack","desc":"Exclusive Alpha collection — premium content only","emoji":"🔥","isNew":true,"s":"703 videos + 477 photos","m":"2628 videos available","l":"5000+ new files daily"},{"id":"p2","name":"Beta Pack","desc":"Premium Beta release — extended collection","emoji":"💎","isNew":false,"s":"721 videos + 491 photos","m":"2701 videos available","l":"5100+ new files daily"},{"id":"p3","name":"Gamma Pack","desc":"Limited Gamma edition — rare content","emoji":"⚡","isNew":false,"s":"689 videos + 463 photos","m":"2589 videos available","l":"4900+ new files daily"},{"id":"p4","name":"Delta Pack","desc":"Archive Delta collection — full pack","emoji":"🎁","isNew":false,"s":"744 videos + 512 photos","m":"2744 videos available","l":"5200+ new files daily"},{"id":"p5","name":"Sigma Pack","desc":"Ultra Premium Sigma — top tier content","emoji":"👑","isNew":false,"s":"668 videos + 448 photos","m":"2512 videos available","l":"4800+ new files daily"},{"id":"p6","name":"Omega Pack","desc":"Final Omega collection — best of the best","emoji":"🌟","isNew":false,"s":"756 videos + 523 photos","m":"2812 videos available","l":"5300+ new files daily"},{"id":"p7","name":"Zeta Pack","desc":"Zeta series — fresh exclusive content","emoji":"🎯","isNew":false,"s":"712 videos + 468 photos","m":"2656 videos available","l":"5050+ new files daily"},{"id":"p8","name":"Eta Pack","desc":"Eta collection — handpicked material","emoji":"💫","isNew":false,"s":"698 videos + 452 photos","m":"2598 videos available","l":"4950+ new files daily"},{"id":"p9","name":"Theta Pack","desc":"Theta release — premium archive","emoji":"🔮","isNew":false,"s":"731 videos + 499 photos","m":"2731 videos available","l":"5150+ new files daily"},{"id":"p10","name":"Iota Pack","desc":"Iota archive — limited edition","emoji":"🏆","isNew":false,"s":"677 videos + 441 photos","m":"2544 videos available","l":"4850+ new files daily"},{"id":"p11","name":"Kappa Pack","desc":"Kappa exclusive — top quality","emoji":"💥","isNew":false,"s":"748 videos + 516 photos","m":"2768 videos available","l":"5250+ new files daily"},{"id":"p12","name":"Lambda Pack","desc":"Lambda collection — rare materials","emoji":"🎪","isNew":false,"s":"715 videos + 472 photos","m":"2672 videos available","l":"5080+ new files daily"},{"id":"p13","name":"Mu Pack","desc":"Mu series — complete collection","emoji":"🎭","isNew":false,"s":"693 videos + 456 photos","m":"2612 videos available","l":"4920+ new files daily"},{"id":"p14","name":"Nu Pack","desc":"Nu archive — exclusive content","emoji":"🌈","isNew":false,"s":"739 videos + 507 photos","m":"2756 videos available","l":"5180+ new files daily"},{"id":"p15","name":"Xi Pack","desc":"Xi release — limited series","emoji":"🎸","isNew":false,"s":"704 videos + 461 photos","m":"2634 videos available","l":"5020+ new files daily"},{"id":"p16","name":"Omicron Pack","desc":"Omicron collection — fresh archive","emoji":"🎬","isNew":false,"s":"726 videos + 488 photos","m":"2712 videos available","l":"5120+ new files daily"},{"id":"p17","name":"Pi Pack","desc":"Pi series — premium content","emoji":"🎵","isNew":false,"s":"685 videos + 445 photos","m":"2567 videos available","l":"4870+ new files daily"},{"id":"p18","name":"Rho Pack","desc":"Rho archive — curated collection","emoji":"🎨","isNew":false,"s":"752 videos + 519 photos","m":"2789 videos available","l":"5280+ new files daily"},{"id":"p19","name":"Tau Pack","desc":"Tau release — top quality material","emoji":"🏅","isNew":false,"s":"708 videos + 465 photos","m":"2645 videos available","l":"5030+ new files daily"},{"id":"p20","name":"Upsilon Pack","desc":"Upsilon collection — final archive","emoji":"💯","isNew":false,"s":"735 videos + 503 photos","m":"2748 videos available","l":"5190+ new files daily"}];
 const SIZES=[
-  {key:'s',badge:'S',prices:{stars:1500,usdt:15.0}},
-  {key:'m',badge:'M',prices:{stars:2500,usdt:25.0}},
-  {key:'l',badge:'L',prices:{stars:5000,usdt:50.0}},
+  {key:'s',badge:'S',prices:{stars:1500,usdt:15}},
+  {key:'m',badge:'M',prices:{stars:2500,usdt:25}},
+  {key:'l',badge:'L',prices:{stars:5000,usdt:50}},
 ];
 const PAYS=[
-  {key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Мгновенно'},
-  {key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'По реквизитам'},
-  {key:'card',icon:'💳',name:'Банковская карта',sub:'Скоро',dim:true},
+  {key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Instant payment'},
+  {key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'Crypto transfer'},
+  {key:'card',icon:'💳',name:'Bank Card',sub:'Coming soon',dim:true},
 ];
 let cur=null,selSize='s',selPay='stars';
+
+function showStore(){
+  document.getElementById('welcome').classList.add('hidden');
+  document.getElementById('next-btn').style.display='none';
+  document.getElementById('store').classList.add('visible');
+  renderGrid();
+}
 
 function renderGrid(){
   const g=document.getElementById('grid');
@@ -103,7 +186,7 @@ function renderGrid(){
     d.innerHTML=(p.isNew?'<div class="new-badge">NEW</div>':'')+
       '<div class="card-header"><div class="card-emoji">'+p.emoji+'</div>'+
       '<div><div class="card-name">'+p.name+'</div>'+
-      '<div class="card-from">от 15.0 USDT</div></div></div>'+
+      '<div class="card-from">from 15 USDT</div></div></div>'+
       '<button class="add-btn" onclick="open_product(\''+p.id+'\',event)">ADD</button>';
     g.appendChild(d);
   });
@@ -136,7 +219,7 @@ function renderSizes(){
     d.onclick=()=>{selSize=s.key;renderSizes();renderPays();updateCTA();};
     d.innerHTML='<div class="sz-badge">'+s.badge+'</div>'+
       '<div class="sz-info"><div class="sz-label">'+label+'</div>'+
-      '<div class="sz-prices">⭐'+s.prices.stars+' &nbsp;|&nbsp; '+s.prices.usdt+'$</div></div>';
+      '<div class="sz-prices">⭐'+s.prices.stars+' | $'+s.prices.usdt+'</div></div>';
     c.appendChild(d);
   });
 }
@@ -147,7 +230,7 @@ function renderPays(){
   const sz=SIZES.find(s=>s.key===selSize);
   PAYS.forEach(m=>{
     const active=m.key===selPay;
-    const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?sz.prices.usdt+' USDT':'скоро';
+    const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?'$'+sz.prices.usdt+' USDT':'soon';
     const d=document.createElement('div');
     d.className='pay-row'+(active?' active':'')+(m.dim?' dim':'');
     if(!m.dim)d.onclick=()=>{selPay=m.key;renderPays();updateCTA();};
@@ -163,19 +246,18 @@ function renderPays(){
 function updateCTA(){
   const btn=document.getElementById('cta-btn');
   const sz=SIZES.find(s=>s.key===selSize);
-  if(selPay==='stars'){btn.textContent='Купить за '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}
-  else if(selPay==='crypto'){btn.textContent='Оплатить '+sz.prices.usdt+' USDT';btn.disabled=false;}
-  else{btn.textContent='Скоро';btn.disabled=true;}
+  if(selPay==='stars'){btn.textContent='Buy for '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}
+  else if(selPay==='crypto'){btn.textContent='Pay $'+sz.prices.usdt+' USDT';btn.disabled=false;}
+  else{btn.textContent='Coming Soon';btn.disabled=true;}
 }
 
 function buyNow(){
   if(!cur)return;
   const cmd=selPay+'_'+cur.id+'_'+selSize;
-  if(tg&&tg.openTelegramLink)tg.openTelegramLink('https://t.me/'+BOT+'?start='+cmd);
-  else window.open('https://t.me/'+BOT+'?start='+cmd,'_blank');
+  const url='https://t.me/'+BOT+'?start='+cmd;
+  if(tg&&tg.openTelegramLink)tg.openTelegramLink(url);
+  else window.open(url,'_blank');
 }
-
-renderGrid();
 </script>
 </body>
 </html>
