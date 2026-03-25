@@ -1,30 +1,223 @@
-<!DOCTYPE html>
+"""
+Запускай после изменения .env:
+    python generate_html.py
+Создаст miniapp/index.html с актуальными товарами.
+"""
+import os, json, pathlib
+from dotenv import load_dotenv
+load_dotenv()
+
+BOT = os.getenv("BOT_USERNAME", "your_bot")
+PS  = int(os.getenv("PRICE_S_STARS", "1500"))
+PU_S = float(os.getenv("PRICE_S_USDT", "15"))
+PM  = int(os.getenv("PRICE_M_STARS", "2500"))
+PU_M = float(os.getenv("PRICE_M_USDT", "25"))
+PL  = int(os.getenv("PRICE_L_STARS", "5000"))
+PU_L = float(os.getenv("PRICE_L_USDT", "50"))
+
+products = []
+for n in range(1, 21):
+    name = os.getenv(f"PRODUCT_{n}_NAME", "").strip()
+    if not name:
+        continue
+    products.append({
+        "id": f"p{n}",
+        "name": name,
+        "desc": os.getenv(f"PRODUCT_{n}_DESC", name),
+        "emoji": os.getenv(f"PRODUCT_{n}_EMOJI", "📦"),
+        "isNew": os.getenv(f"PRODUCT_{n}_NEW", "false").lower() == "true",
+        "s": os.getenv(f"PRODUCT_{n}_S", "703 videos + 477 photos"),
+        "m": os.getenv(f"PRODUCT_{n}_M", "2628 videos available"),
+        "l": os.getenv(f"PRODUCT_{n}_L", "5000+ new files daily"),
+    })
+
+pjs = json.dumps(products, ensure_ascii=False)
+
+html = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Exclusive Store</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-body{margin:0;padding:40px 20px;background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;gap:20px}
-button{width:100%;max-width:300px;padding:18px;font-size:18px;font-weight:700;border:none;border-radius:12px;cursor:pointer}
-#btn-stars{background:#f5a623;color:#000}
-#btn-crypto{background:#3b82f6;color:#fff}
+*{{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+body{{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}}
+::-webkit-scrollbar{{display:none}}
+.header{{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 16px 10px}}
+.header-title{{font-size:20px;font-weight:700}}
+.header-sub{{font-size:12px;color:#555;margin-top:2px}}
+.grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}}
+.card{{background:#1e1e1e;border-radius:16px;padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(255,255,255,0.08);position:relative}}
+.card-header{{display:flex;align-items:flex-start;gap:10px}}
+.card-emoji{{font-size:28px;line-height:1;flex-shrink:0}}
+.card-name{{font-size:14px;font-weight:700;line-height:1.3}}
+.card-from{{font-size:11px;color:#555;margin-top:3px}}
+.new-badge{{position:absolute;top:10px;right:10px;background:#30d158;color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase}}
+.add-btn{{background:#f5a623;color:#000;border:none;border-radius:8px;width:100%;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer}}
+.add-btn:active{{background:#e09400}}
+.overlay{{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s}}
+.overlay.open{{opacity:1;pointer-events:all}}
+.sheet{{position:fixed;bottom:0;left:0;right:0;z-index:301;background:#141414;border-radius:24px 24px 0 0;padding:0 0 44px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:90vh;overflow-y:auto}}
+.sheet.open{{transform:translateY(0)}}
+.sheet-handle{{width:36px;height:4px;background:rgba(255,255,255,0.18);border-radius:2px;margin:12px auto 0}}
+.prod-info{{padding:20px 20px 0}}
+.prod-title{{font-size:22px;font-weight:800;margin-bottom:6px}}
+.prod-desc{{font-size:14px;color:#a0a0a0;line-height:1.6}}
+.sec{{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;padding:20px 20px 10px}}
+.size-list{{display:flex;flex-direction:column;gap:8px;padding:0 20px}}
+.size-row{{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}}
+.size-row.active{{border-color:#f5a623;background:rgba(245,166,35,0.06)}}
+.sz-badge{{width:36px;height:36px;border-radius:8px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0}}
+.size-row.active .sz-badge{{background:#f5a623;color:#000}}
+.sz-info{{flex:1}}
+.sz-label{{font-size:14px;font-weight:600}}
+.sz-prices{{display:flex;gap:8px;font-size:12px;color:#888;margin-top:2px}}
+.size-row.active .sz-prices{{color:#f5a623;font-weight:600}}
+.pay-list{{display:flex;flex-direction:column;gap:8px;padding:0 20px}}
+.pay-row{{background:#1e1e1e;border:2px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}}
+.pay-row.active{{border-color:#f5a623;background:rgba(245,166,35,0.06)}}
+.pay-row.dim{{opacity:0.38;cursor:not-allowed}}
+.pay-icon{{font-size:22px;flex-shrink:0}}
+.pay-info{{flex:1}}
+.pay-name{{font-size:14px;font-weight:600}}
+.pay-sub{{font-size:11px;color:#555;margin-top:1px}}
+.pay-amt{{font-size:15px;font-weight:700;color:#f5a623;white-space:nowrap}}
+.pay-radio{{width:20px;height:20px;border:2px solid rgba(255,255,255,0.15);border-radius:50%;flex-shrink:0;transition:all .2s}}
+.pay-row.active .pay-radio{{border-color:#f5a623;background:#f5a623;box-shadow:inset 0 0 0 3px #1e1e1e}}
+.cta-wrap{{padding:20px 20px 0}}
+.cta-btn{{width:100%;background:#f5a623;color:#000;border:none;border-radius:10px;padding:16px;font-size:16px;font-weight:800;cursor:pointer}}
+.cta-btn:active{{background:#e09400}}
+.cta-btn:disabled{{background:#262626;color:#555;pointer-events:none}}
 </style>
 </head>
 <body>
-<h2>Тест оплаты</h2>
-<button id="btn-stars" onclick="pay('stars')">⭐ Купить за 1 Star</button>
-<button id="btn-crypto" onclick="pay('crypto')">💎 Купить за 1 USDT</button>
+<div class="header">
+  <div class="header-title">🛍 Exclusive Store</div>
+  <div class="header-sub">Эксклюзивный контент</div>
+</div>
+<div id="grid" class="grid"></div>
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="prod-info">
+    <div class="prod-title" id="s-title"></div>
+    <div class="prod-desc" id="s-desc"></div>
+  </div>
+  <div class="sec">Выберите архив</div>
+  <div class="size-list" id="size-list"></div>
+  <div class="sec">Способ оплаты</div>
+  <div class="pay-list" id="pay-list"></div>
+  <div class="cta-wrap">
+    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+  </div>
+</div>
 <script>
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+const tg=window.Telegram?.WebApp;
+if(tg){{tg.ready();tg.expand();}}
+const BOT='{BOT}';
+const PRODUCTS={pjs};
+const SIZES=[
+  {{key:'s',badge:'S',prices:{{stars:{PS},usdt:{PU_S}}}}},
+  {{key:'m',badge:'M',prices:{{stars:{PM},usdt:{PU_M}}}}},
+  {{key:'l',badge:'L',prices:{{stars:{PL},usdt:{PU_L}}}}},
+];
+const PAYS=[
+  {{key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Мгновенно'}},
+  {{key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'По реквизитам'}},
+  {{key:'card',icon:'💳',name:'Банковская карта',sub:'Скоро',dim:true}},
+];
+let cur=null,selSize='s',selPay='stars';
 
-function pay(method){
-  tg.close();
-  tg.openTelegramLink('https://t.me/test_shop2134_bot?start=' + method + '_small');
-}
+function renderGrid(){{
+  const g=document.getElementById('grid');
+  g.innerHTML='';
+  PRODUCTS.forEach(p=>{{
+    const d=document.createElement('div');
+    d.className='card';
+    d.innerHTML=(p.isNew?'<div class="new-badge">NEW</div>':'')+
+      '<div class="card-header"><div class="card-emoji">'+p.emoji+'</div>'+
+      '<div><div class="card-name">'+p.name+'</div>'+
+      '<div class="card-from">от {PU_S} USDT</div></div></div>'+
+      '<button class="add-btn" onclick="open_product(\\''+p.id+'\\',event)">ADD</button>';
+    g.appendChild(d);
+  }});
+}}
+
+function open_product(id,e){{
+  e&&e.stopPropagation();
+  cur=PRODUCTS.find(p=>p.id===id);
+  if(!cur)return;
+  document.getElementById('s-title').textContent=cur.emoji+' '+cur.name;
+  document.getElementById('s-desc').textContent=cur.desc;
+  renderSizes();renderPays();updateCTA();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}}
+
+function closeSheet(){{
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}}
+
+function renderSizes(){{
+  const c=document.getElementById('size-list');
+  c.innerHTML='';
+  SIZES.forEach(s=>{{
+    const active=s.key===selSize;
+    const label=cur[s.key];
+    const d=document.createElement('div');
+    d.className='size-row'+(active?' active':'');
+    d.onclick=()=>{{selSize=s.key;renderSizes();renderPays();updateCTA();}};
+    d.innerHTML='<div class="sz-badge">'+s.badge+'</div>'+
+      '<div class="sz-info"><div class="sz-label">'+label+'</div>'+
+      '<div class="sz-prices">⭐'+s.prices.stars+' &nbsp;|&nbsp; '+s.prices.usdt+'$</div></div>';
+    c.appendChild(d);
+  }});
+}}
+
+function renderPays(){{
+  const c=document.getElementById('pay-list');
+  c.innerHTML='';
+  const sz=SIZES.find(s=>s.key===selSize);
+  PAYS.forEach(m=>{{
+    const active=m.key===selPay;
+    const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?sz.prices.usdt+' USDT':'скоро';
+    const d=document.createElement('div');
+    d.className='pay-row'+(active?' active':'')+(m.dim?' dim':'');
+    if(!m.dim)d.onclick=()=>{{selPay=m.key;renderPays();updateCTA();}};
+    d.innerHTML='<div class="pay-icon">'+m.icon+'</div>'+
+      '<div class="pay-info"><div class="pay-name">'+m.name+'</div>'+
+      '<div class="pay-sub">'+m.sub+'</div></div>'+
+      '<div class="pay-amt">'+amt+'</div>'+
+      '<div class="pay-radio"></div>';
+    c.appendChild(d);
+  }});
+}}
+
+function updateCTA(){{
+  const btn=document.getElementById('cta-btn');
+  const sz=SIZES.find(s=>s.key===selSize);
+  if(selPay==='stars'){{btn.textContent='Купить за '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}}
+  else if(selPay==='crypto'){{btn.textContent='Оплатить '+sz.prices.usdt+' USDT';btn.disabled=false;}}
+  else{{btn.textContent='Скоро';btn.disabled=true;}}
+}}
+
+function buyNow(){{
+  if(!cur)return;
+  const cmd=selPay+'_'+cur.id+'_'+selSize;
+  if(tg&&tg.openTelegramLink)tg.openTelegramLink('https://t.me/'+BOT+'?start='+cmd);
+  else window.open('https://t.me/'+BOT+'?start='+cmd,'_blank');
+}}
+
+renderGrid();
 </script>
 </body>
-</html>
+</html>"""
+
+out = pathlib.Path(__file__).parent.parent / "miniapp" / "index.html"
+out.parent.mkdir(exist_ok=True)
+out.write_text(html, encoding="utf-8")
+print(f"Готово! Товаров: {len(products)}")
+print(f"Файл: {out}")
+print("Залей index.html на GitHub!")
