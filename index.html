@@ -156,7 +156,7 @@ function renderGrid(){
       '<div class="card-header"><div class="card-emoji">'+p.emoji+'</div>'+
       '<div><div class="card-name">'+p.name+'</div>'+
       '<div class="card-from">from $15.0 USDT</div></div></div>'+
-      '<button class="add-btn" data-id="'+p.id+'" onclick="open_product(this.getAttribute("data-id"),event)">ADD</button>';
+      '<button class="add-btn" id="btn-'+p.id+'" onclick="open_product(this.id.slice(4),event)">ADD</button>';
     g.appendChild(d);
   });
 }
