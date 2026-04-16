@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,8 +7,30 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;overflow-x:hidden}
 ::-webkit-scrollbar{display:none}
+.welcome{position:fixed;inset:0;background:#0a0a0a;z-index:500;display:flex;flex-direction:column;align-items:center;padding:20px 20px 32px;text-align:center;overflow-y:auto}
+.welcome.hidden{display:none}
+.next-btn{background:#f5a623;color:#000;border:none;border-radius:14px;padding:16px;font-size:17px;font-weight:800;cursor:pointer;width:100%;max-width:380px;margin-bottom:20px}
+.next-btn:active{background:#e09400;transform:scale(0.97)}
+.welcome-emoji{font-size:64px;margin-bottom:16px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.welcome-title{font-size:24px;font-weight:800;margin-bottom:6px;letter-spacing:-0.5px}
+.welcome-title span{color:#f5a623}
+.welcome-sub{font-size:13px;color:#666;margin-bottom:24px;letter-spacing:0.5px;text-transform:uppercase}
+.welcome-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;width:100%;max-width:380px}
+.stat-card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 10px;text-align:center}
+.stat-num{font-size:20px;font-weight:800;color:#f5a623}
+.stat-label{font-size:10px;color:#555;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px}
+.welcome-card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;width:100%;max-width:380px;text-align:left}
+.welcome-card-title{font-size:13px;font-weight:700;color:#f5a623;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.welcome-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.welcome-step:last-child{margin-bottom:0}
+.step-num{width:26px;height:26px;border-radius:50%;background:#f5a623;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-text{font-size:13px;color:#ccc;line-height:1.5}
+.step-text b{color:#fff}
+.store{display:none}
+.store.visible{display:block}
 .header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 16px 10px}
 .header-title{font-size:20px;font-weight:700}
 .header-sub{font-size:12px;color:#555;margin-top:2px}
@@ -57,11 +79,34 @@ body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-title">🛍 Exclusive Store</div>
-  <div class="header-sub">Эксклюзивный контент</div>
+
+<div class="welcome" id="welcome">
+  <button class="next-btn" onclick="showStore()">NEXT — Browse Catalog →</button>
+  <div class="welcome-emoji">👋</div>
+  <div class="welcome-title">Welcome to the<br><span>EXCLUSIVE ARCHIVE</span></div>
+  <div class="welcome-sub">Premium Content Store</div>
+  <div class="welcome-stats">
+    <div class="stat-card"><div class="stat-num">20+</div><div class="stat-label">Collections</div></div>
+    <div class="stat-card"><div class="stat-num">5K+</div><div class="stat-label">Files</div></div>
+    <div class="stat-card"><div class="stat-num">Daily</div><div class="stat-label">Updates</div></div>
+  </div>
+  <div class="welcome-card">
+    <div class="welcome-card-title">📖 How it works</div>
+    <div class="welcome-step"><div class="step-num">1</div><div class="step-text"><b>Browse the catalog</b> — choose from 20+ exclusive content collections</div></div>
+    <div class="welcome-step"><div class="step-num">2</div><div class="step-text"><b>Select archive size</b> — S, M or L depending on how much content you want</div></div>
+    <div class="welcome-step"><div class="step-num">3</div><div class="step-text"><b>Choose payment</b> — Telegram Stars (instant) or USDT crypto</div></div>
+    <div class="welcome-step"><div class="step-num">4</div><div class="step-text"><b>Get your link</b> — download link is sent automatically after payment</div></div>
+  </div>
 </div>
-<div id="grid" class="grid"></div>
+
+<div class="store" id="store">
+  <div class="header">
+    <div class="header-title">🛍 Exclusive Store</div>
+    <div class="header-sub">Premium exclusive content</div>
+  </div>
+  <div id="grid" class="grid"></div>
+</div>
+
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
@@ -69,14 +114,15 @@ body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
     <div class="prod-title" id="s-title"></div>
     <div class="prod-desc" id="s-desc"></div>
   </div>
-  <div class="sec">Выберите архив</div>
+  <div class="sec">Select archive size</div>
   <div class="size-list" id="size-list"></div>
-  <div class="sec">Способ оплаты</div>
+  <div class="sec">Payment method</div>
   <div class="pay-list" id="pay-list"></div>
   <div class="cta-wrap">
-    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Купить</button>
+    <button class="cta-btn" id="cta-btn" onclick="buyNow()">Buy</button>
   </div>
 </div>
+
 <script>
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
@@ -88,11 +134,17 @@ const SIZES=[
   {key:'l',badge:'L',prices:{stars:5000,usdt:50.0}},
 ];
 const PAYS=[
-  {key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Мгновенно'},
-  {key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'По реквизитам'},
-  {key:'card',icon:'💳',name:'Банковская карта',sub:'Скоро',dim:true},
+  {key:'stars',icon:'⭐',name:'Telegram Stars',sub:'Instant payment'},
+  {key:'crypto',icon:'💎',name:'USDT (TRC-20)',sub:'Crypto transfer'},
+  {key:'card',icon:'💳',name:'Bank Card',sub:'Coming soon',dim:true},
 ];
 let cur=null,selSize='s',selPay='stars';
+
+function showStore(){
+  document.getElementById('welcome').classList.add('hidden');
+  document.getElementById('store').classList.add('visible');
+  renderGrid();
+}
 
 function renderGrid(){
   const g=document.getElementById('grid');
@@ -103,8 +155,8 @@ function renderGrid(){
     d.innerHTML=(p.isNew?'<div class="new-badge">NEW</div>':'')+
       '<div class="card-header"><div class="card-emoji">'+p.emoji+'</div>'+
       '<div><div class="card-name">'+p.name+'</div>'+
-      '<div class="card-from">от 15.0 USDT</div></div></div>'+
-      '<button class="add-btn" onclick="open_product(\''+p.id+'\',event)">ADD</button>';
+      '<div class="card-from">from $15.0 USDT</div></div></div>'+
+      '<button class="add-btn" onclick="open_product(''+p.id+'',event)">ADD</button>';
     g.appendChild(d);
   });
 }
@@ -136,7 +188,7 @@ function renderSizes(){
     d.onclick=()=>{selSize=s.key;renderSizes();renderPays();updateCTA();};
     d.innerHTML='<div class="sz-badge">'+s.badge+'</div>'+
       '<div class="sz-info"><div class="sz-label">'+label+'</div>'+
-      '<div class="sz-prices">⭐'+s.prices.stars+' &nbsp;|&nbsp; '+s.prices.usdt+'$</div></div>';
+      '<div class="sz-prices">⭐'+s.prices.stars+' | $'+s.prices.usdt+'</div></div>';
     c.appendChild(d);
   });
 }
@@ -147,13 +199,12 @@ function renderPays(){
   const sz=SIZES.find(s=>s.key===selSize);
   PAYS.forEach(m=>{
     const active=m.key===selPay;
-    const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?sz.prices.usdt+' USDT':'скоро';
+    const amt=m.key==='stars'?sz.prices.stars+' ⭐':m.key==='crypto'?'$'+sz.prices.usdt+' USDT':'soon';
     const d=document.createElement('div');
     d.className='pay-row'+(active?' active':'')+(m.dim?' dim':'');
     if(!m.dim)d.onclick=()=>{selPay=m.key;renderPays();updateCTA();};
     d.innerHTML='<div class="pay-icon">'+m.icon+'</div>'+
-      '<div class="pay-info"><div class="pay-name">'+m.name+'</div>'+
-      '<div class="pay-sub">'+m.sub+'</div></div>'+
+      '<div class="pay-info"><div class="pay-name">'+m.name+'</div><div class="pay-sub">'+m.sub+'</div></div>'+
       '<div class="pay-amt">'+amt+'</div>'+
       '<div class="pay-radio"></div>';
     c.appendChild(d);
@@ -163,19 +214,30 @@ function renderPays(){
 function updateCTA(){
   const btn=document.getElementById('cta-btn');
   const sz=SIZES.find(s=>s.key===selSize);
-  if(selPay==='stars'){btn.textContent='Купить за '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}
-  else if(selPay==='crypto'){btn.textContent='Оплатить '+sz.prices.usdt+' USDT';btn.disabled=false;}
-  else{btn.textContent='Скоро';btn.disabled=true;}
+  if(selPay==='stars'){btn.textContent='Buy for '+sz.prices.stars+' ⭐ Stars';btn.disabled=false;}
+  else if(selPay==='crypto'){btn.textContent='Pay $'+sz.prices.usdt+' USDT';btn.disabled=false;}
+  else{btn.textContent='Coming Soon';btn.disabled=true;}
 }
 
 function buyNow(){
   if(!cur)return;
   const cmd=selPay+'_'+cur.id+'_'+selSize;
-  if(tg&&tg.openTelegramLink)tg.openTelegramLink('https://t.me/'+BOT+'?start='+cmd);
-  else window.open('https://t.me/'+BOT+'?start='+cmd,'_blank');
+  const url='https://t.me/'+BOT+'?start='+cmd;
+  if(tg&&tg.openTelegramLink){
+    tg.openTelegramLink(url);
+    showToast();
+  } else {
+    window.open(url,'_blank');
+  }
 }
 
-renderGrid();
+function showToast(){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e1e1e;border:1px solid #f5a623;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;text-align:center;max-width:280px;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+  t.innerHTML='✅ Payment invoice sent to chat!<br><span style="font-size:12px;color:#888;font-weight:400">Close this window to see it</span>';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
 </script>
 </body>
 </html>
